@@ -1,0 +1,1223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>100kg Bench Press Tracker</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #f7f5f0; --bg2: #eeecea; --bg3: #e5e2dc; --card: #ffffff;
+  --text: #1c1916; --text2: #6b6560; --text3: #a09a94;
+  --border: rgba(0,0,0,0.08); --border2: rgba(0,0,0,0.14);
+  --iron: #2c3e50; --iron-light: #d5dce4;
+  --gold: #b8860b; --gold-light: #fdf3d0;
+  --moss: #3d6b35; --moss-light: #e2f0df;
+  --slate: #4a5568; --slate-light: #edf2f7;
+  --teal: #1D9E75; --orange: #d85a30;
+  --radius: 8px; --radius-lg: 14px;
+  --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #141210; --bg2: #1c1916; --bg3: #242018; --card: #1e1b18;
+    --text: #f0ece6; --text2: #8c8680; --text3: #5c5650;
+    --border: rgba(255,255,255,0.07); --border2: rgba(255,255,255,0.12);
+    --iron: #7fa3c0; --iron-light: #0d1e2e;
+    --gold: #f0c040; --gold-light: #2a2010;
+    --moss: #6aad60; --moss-light: #1a2e18;
+    --slate: #94a3b8; --slate-light: #1e2533;
+  }
+}
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5; min-height: 100vh; }
+.layout { max-width: 860px; margin: 0 auto; padding: 24px 16px 60px; }
+
+/* Header */
+.header { margin-bottom: 24px; }
+.header-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--iron); margin-bottom: 3px; }
+.page-title { font-size: 26px; font-weight: 700; letter-spacing: -.02em; line-height: 1.2; }
+.page-meta { font-size: 13px; color: var(--text2); margin-top: 3px; }
+.countdown-strip { display: flex; gap: 8px; flex-wrap: wrap; }
+.countdown-pill { background: var(--iron); color: #fff; font-size: 13px; font-weight: 500; padding: 5px 13px; border-radius: 999px; }
+.countdown-pill span { font-size: 17px; font-weight: 700; margin-right: 3px; }
+
+/* Status */
+.status-bar { display: flex; align-items: center; justify-content: space-between; background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 8px 12px; margin-bottom: 18px; font-size: 12px; color: var(--text2); flex-wrap: wrap; gap: 8px; }
+.sdot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; margin-right: 5px; background: var(--moss); }
+.sdot.saving { background: var(--orange); animation: pulse .8s infinite; }
+.sdot.err { background: #b44; }
+@keyframes pulse { 0%,100%{opacity:1}50%{opacity:.4} }
+
+/* Stats */
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(120px,1fr)); gap: 10px; margin-bottom: 20px; }
+.stat { background: var(--card); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 13px 15px; box-shadow: var(--shadow); }
+.stat-label { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: .06em; color: var(--text3); margin-bottom: 5px; }
+.stat-val { font-size: 26px; font-weight: 700; letter-spacing: -.02em; line-height: 1; }
+.stat-sub { font-size: 11px; color: var(--text3); margin-top: 3px; }
+.stat-bar { height: 3px; background: var(--bg3); border-radius: 2px; margin-top: 7px; overflow: hidden; }
+.stat-bar-fill { height: 100%; background: var(--iron); border-radius: 2px; transition: width .5s; }
+
+/* Section title */
+.section-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--text3); margin: 20px 0 10px; }
+
+/* Target visual */
+.target-card { background: var(--card); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 14px 16px; box-shadow: var(--shadow); margin-bottom: 10px; }
+.target-label-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; flex-wrap: wrap; gap: 8px; }
+.target-sport { font-size: 14px; font-weight: 500; display: flex; align-items: center; gap: 8px; }
+.target-times { display: flex; gap: 14px; }
+.target-time-item { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; }
+.target-time-val { font-size: 15px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.target-time-lbl { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: var(--text3); }
+.target-time-current { color: var(--text); }
+.target-time-target { color: var(--teal); }
+.target-stat-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 12px; }
+.target-stat { background: var(--bg2); border-radius: var(--radius); padding: 9px 12px; text-align: center; }
+.target-stat-val { font-size: 16px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.target-stat-lbl { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: var(--text3); margin-top: 2px; }
+.bar-svg { width: 100%; display: block; }
+
+/* Benchmarks */
+.bench-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.bench-card { background: var(--card); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 13px 15px; box-shadow: var(--shadow); }
+.bench-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.bench-icon { width: 28px; height: 28px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 14px; background: var(--iron-light); }
+.bench-card-title { font-size: 13px; font-weight: 600; }
+.bench-row { display: flex; align-items: center; justify-content: space-between; padding: 5px 0; border-bottom: 0.5px solid var(--border); }
+.bench-row:last-child { border-bottom: none; }
+.bench-row-label { font-size: 12px; color: var(--text2); }
+.bench-row-val { display: flex; align-items: center; gap: 6px; }
+.bench-time { font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.bench-input { font-size: 13px; padding: 3px 7px; border-radius: 6px; border: 0.5px solid var(--border2); background: var(--bg2); color: var(--text); width: 72px; font-family: inherit; }
+.bench-btn { font-size: 11px; padding: 3px 8px; border-radius: 6px; border: 0.5px solid var(--border2); background: transparent; color: var(--text2); cursor: pointer; }
+.bench-btn:hover { background: var(--bg2); }
+.delta { font-size: 11px; font-weight: 600; padding: 1px 6px; border-radius: 4px; }
+.delta-better { background: var(--moss-light); color: var(--moss); }
+
+/* Progress */
+.prog-card { background: var(--card); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 13px 15px; box-shadow: var(--shadow); }
+.prog-row { display: flex; align-items: center; gap: 10px; margin-bottom: 9px; }
+.prog-row:last-child { margin-bottom: 0; }
+.prog-label { font-size: 12px; color: var(--text2); width: 65px; flex-shrink: 0; }
+.prog-bg { flex: 1; height: 5px; background: var(--bg3); border-radius: 3px; overflow: hidden; }
+.prog-fill { height: 100%; border-radius: 3px; transition: width .4s; }
+.prog-pct { font-size: 12px; font-weight: 600; width: 32px; text-align: right; }
+
+/* Week tabs */
+.week-nav { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+.wtab { font-size: 12px; font-weight: 500; padding: 5px 12px; border-radius: 999px; border: 0.5px solid var(--border2); background: transparent; color: var(--text2); cursor: pointer; transition: all .15s; }
+.wtab.active { background: var(--iron); color: #fff; border-color: transparent; }
+.wtab .dot { display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: var(--moss); margin-left: 5px; vertical-align: middle; }
+
+/* Sessions */
+.session-list { display: flex; flex-direction: column; gap: 8px; }
+.srow { display: grid; grid-template-columns: 62px 1fr auto; align-items: start; gap: 10px; background: var(--card); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 11px 13px; box-shadow: var(--shadow); }
+.srow.done { background: var(--bg2); box-shadow: none; }
+.srow.done .sname { text-decoration: line-through; color: var(--text2); }
+.srow.skipped { opacity: .4; box-shadow: none; }
+.sday { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--text3); padding-top: 2px; }
+.sname { font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.sdesc { font-size: 12px; color: var(--text2); margin-top: 3px; }
+.sdetail { font-size: 12px; color: var(--text2); margin-top: 6px; background: var(--bg2); border-radius: var(--radius); padding: 8px 10px; line-height: 1.6; }
+.tag { font-size: 10px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; padding: 2px 7px; border-radius: 4px; white-space: nowrap; }
+.t-bench  { background: var(--iron-light); color: var(--iron); }
+.t-upper  { background: var(--gold-light); color: var(--gold); }
+.t-rest   { background: var(--slate-light); color: var(--slate); }
+.t-attempt{ background: var(--gold-light); color: var(--gold); border: 1px solid var(--gold); }
+.action-btns { display: flex; gap: 5px; padding-top: 1px; }
+.abtn { font-size: 12px; padding: 4px 9px; border-radius: 6px; border: 0.5px solid var(--border2); background: transparent; color: var(--text2); cursor: pointer; transition: all .15s; white-space: nowrap; }
+.abtn:hover { background: var(--bg2); }
+.abtn.done-btn:hover { background: var(--moss-light); color: var(--moss); border-color: transparent; }
+.abtn.skip-btn:hover { background: #fce8e8; color: #922; border-color: transparent; }
+
+/* Chart */
+.chart-card { background: var(--card); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 14px 16px; box-shadow: var(--shadow); }
+.chart-title { font-size: 12px; font-weight: 600; color: var(--text2); margin-bottom: 12px; }
+.chart-wrap { position: relative; height: 180px; }
+.chart-empty { height: 180px; display: flex; align-items: center; justify-content: center; font-size: 12px; color: var(--text3); flex-direction: column; gap: 6px; }
+
+/* Loading */
+.loading-overlay { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 100; }
+.loading-wave { font-size: 32px; margin-bottom: 10px; text-align: center; animation: wave 1.5s ease-in-out infinite; }
+.loading-text { font-size: 13px; color: var(--text2); text-align: center; }
+@keyframes wave { 0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)} }
+
+@media(max-width:520px){
+  .bench-grid { grid-template-columns: 1fr; }
+  .srow { grid-template-columns: 50px 1fr; }
+  .action-btns { grid-column: 2; }
+}
+
+/* Weekly Review */
+.review-card {
+  background: var(--card);
+  border: 1.5px solid var(--iron);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(44,62,80,0.1);
+  margin-bottom: 8px;
+}
+.review-header {
+  background: var(--iron);
+  color: #fff;
+  padding: 13px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.review-header-left { display: flex; align-items: center; gap: 10px; }
+.review-icon { font-size: 18px; }
+.review-title { font-size: 14px; font-weight: 700; letter-spacing: -.01em; }
+.review-subtitle { font-size: 11px; opacity: .7; margin-top: 1px; }
+.review-badge { font-size: 10px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; padding: 3px 9px; border-radius: 999px; background: rgba(255,255,255,0.18); color: #fff; }
+.review-body { padding: 16px; }
+.review-generating {
+  display: flex; align-items: center; gap: 10px;
+  padding: 18px 16px; color: var(--text2); font-size: 13px;
+}
+.review-spinner {
+  width: 16px; height: 16px; border-radius: 50%;
+  border: 2px solid var(--border2);
+  border-top-color: var(--iron);
+  animation: spin .7s linear infinite; flex-shrink: 0;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.review-content { font-size: 13px; line-height: 1.7; color: var(--text); }
+.review-content h3 {
+  font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em;
+  color: var(--iron); margin: 14px 0 6px; padding-bottom: 4px;
+  border-bottom: 0.5px solid var(--border2);
+}
+.review-content h3:first-child { margin-top: 0; }
+.review-content p { margin-bottom: 8px; }
+.review-content p:last-child { margin-bottom: 0; }
+.review-content ul { padding-left: 18px; margin-bottom: 8px; }
+.review-content ul li { margin-bottom: 4px; }
+.review-content strong { color: var(--iron); font-weight: 600; }
+.review-content .highlight {
+  background: var(--iron-light); color: var(--iron);
+  padding: 1px 6px; border-radius: 4px; font-weight: 600; font-size: 12px;
+}
+.review-trigger-btn {
+  display: flex; align-items: center; gap: 8px;
+  width: 100%; padding: 14px 16px;
+  background: transparent; border: none;
+  color: var(--text2); font-size: 13px; font-family: inherit;
+  cursor: pointer; text-align: left; border-top: 0.5px solid var(--border);
+  transition: background .15s;
+}
+.review-trigger-btn:hover { background: var(--bg2); }
+.review-trigger-btn .ricon { font-size: 15px; }
+.review-error { color: var(--orange); font-size: 12px; padding: 10px 0; }
+.review-meta { font-size: 11px; color: var(--text3); margin-top: 10px; padding-top: 10px; border-top: 0.5px solid var(--border); }
+
+/* ── Chat ── */
+.chat-fab {
+  position: fixed; bottom: 24px; right: 20px; z-index: 200;
+  width: 52px; height: 52px; border-radius: 50%;
+  background: var(--iron); color: #fff; border: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; font-size: 20px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.22); transition: transform .15s, box-shadow .15s;
+}
+.chat-fab:hover { transform: scale(1.07); box-shadow: 0 6px 22px rgba(0,0,0,0.28); }
+.chat-fab .chat-unread {
+  position: absolute; top: -2px; right: -2px;
+  width: 16px; height: 16px; border-radius: 50%;
+  background: var(--orange); font-size: 9px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  border: 2px solid var(--bg); display: none;
+}
+
+.chat-panel {
+  position: fixed; bottom: 84px; right: 20px; z-index: 199;
+  width: 360px; max-width: calc(100vw - 32px);
+  height: 520px; max-height: calc(100vh - 110px);
+  background: var(--card); border: 0.5px solid var(--border2);
+  border-radius: var(--radius-lg); box-shadow: 0 8px 40px rgba(0,0,0,0.18);
+  display: flex; flex-direction: column; overflow: hidden;
+  transform: scale(0.92) translateY(12px); opacity: 0;
+  pointer-events: none; transition: transform .2s ease, opacity .2s ease;
+  transform-origin: bottom right;
+}
+.chat-panel.open {
+  transform: scale(1) translateY(0); opacity: 1; pointer-events: all;
+}
+
+.chat-topbar {
+  background: var(--iron); color: #fff;
+  padding: 12px 14px; display: flex; align-items: center; gap: 10px;
+  flex-shrink: 0;
+}
+.chat-avatar {
+  width: 30px; height: 30px; border-radius: 50%;
+  background: rgba(255,255,255,0.18);
+  display: flex; align-items: center; justify-content: center; font-size: 14px;
+  flex-shrink: 0;
+}
+.chat-topbar-info { flex: 1; min-width: 0; }
+.chat-topbar-name { font-size: 13px; font-weight: 700; }
+.chat-topbar-sub { font-size: 10px; opacity: .65; margin-top: 1px; }
+.chat-close-btn {
+  background: none; border: none; color: rgba(255,255,255,0.7);
+  font-size: 18px; cursor: pointer; padding: 2px 4px; line-height: 1;
+  border-radius: 4px; transition: background .15s;
+}
+.chat-close-btn:hover { background: rgba(255,255,255,0.15); color: #fff; }
+
+.chat-messages {
+  flex: 1; overflow-y: auto; padding: 14px 12px;
+  display: flex; flex-direction: column; gap: 10px;
+  scroll-behavior: smooth;
+}
+.chat-messages::-webkit-scrollbar { width: 4px; }
+.chat-messages::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+.cmsg { display: flex; gap: 8px; align-items: flex-end; }
+.cmsg.user { flex-direction: row-reverse; }
+.cmsg-avatar {
+  width: 24px; height: 24px; border-radius: 50%; flex-shrink: 0;
+  background: var(--iron-light); display: flex; align-items: center; justify-content: center;
+  font-size: 11px; color: var(--iron); font-weight: 700; margin-bottom: 2px;
+}
+.cmsg.user .cmsg-avatar { background: var(--moss-light); color: var(--moss); }
+.cmsg-bubble {
+  max-width: 82%; padding: 9px 12px; border-radius: 14px;
+  font-size: 13px; line-height: 1.55; color: var(--text);
+  background: var(--bg2); border: 0.5px solid var(--border);
+  border-bottom-left-radius: 4px;
+}
+.cmsg.user .cmsg-bubble {
+  background: var(--iron); color: #fff; border: none;
+  border-bottom-right-radius: 4px; border-bottom-left-radius: 14px;
+}
+.cmsg-bubble strong { font-weight: 600; }
+.cmsg-bubble ul { padding-left: 16px; margin: 4px 0; }
+.cmsg-bubble li { margin-bottom: 2px; }
+.cmsg-bubble p { margin: 0 0 5px; }
+.cmsg-bubble p:last-child { margin-bottom: 0; }
+.cmsg.user .cmsg-bubble strong { color: rgba(255,255,255,0.9); }
+
+.chat-typing {
+  display: flex; gap: 4px; align-items: center; padding: 10px 12px;
+}
+.chat-typing span {
+  width: 6px; height: 6px; border-radius: 50%; background: var(--text3);
+  animation: typingdot 1.2s infinite;
+}
+.chat-typing span:nth-child(2) { animation-delay: .2s; }
+.chat-typing span:nth-child(3) { animation-delay: .4s; }
+@keyframes typingdot { 0%,60%,100%{transform:translateY(0);opacity:.4} 30%{transform:translateY(-4px);opacity:1} }
+
+.chat-suggestions {
+  padding: 0 12px 10px; display: flex; gap: 6px; flex-wrap: wrap; flex-shrink: 0;
+}
+.chat-suggestion {
+  font-size: 11px; padding: 5px 10px; border-radius: 999px;
+  border: 0.5px solid var(--border2); background: transparent;
+  color: var(--text2); cursor: pointer; font-family: inherit;
+  transition: all .15s; white-space: nowrap;
+}
+.chat-suggestion:hover { background: var(--iron); color: #fff; border-color: transparent; }
+
+.chat-input-row {
+  padding: 10px 12px; border-top: 0.5px solid var(--border);
+  display: flex; gap: 8px; align-items: flex-end; flex-shrink: 0;
+}
+.chat-input {
+  flex: 1; font-size: 13px; font-family: inherit; line-height: 1.45;
+  padding: 8px 11px; border-radius: 20px;
+  border: 0.5px solid var(--border2); background: var(--bg2); color: var(--text);
+  resize: none; outline: none; max-height: 100px; overflow-y: auto;
+  transition: border-color .15s;
+}
+.chat-input:focus { border-color: var(--iron); }
+.chat-input::placeholder { color: var(--text3); }
+.chat-send-btn {
+  width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0;
+  background: var(--iron); color: #fff; border: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; font-size: 14px;
+  transition: background .15s; align-self: flex-end;
+}
+.chat-send-btn:hover { background: var(--slate); }
+.chat-send-btn:disabled { opacity: .4; cursor: default; }
+
+.chat-empty {
+  flex: 1; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 8px; padding: 20px; text-align: center;
+}
+.chat-empty-icon { font-size: 32px; opacity: .5; }
+.chat-empty-title { font-size: 14px; font-weight: 600; color: var(--text); }
+.chat-empty-sub { font-size: 12px; color: var(--text3); line-height: 1.5; }
+</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loading">
+  <div><div class="loading-wave">🏋️</div><div class="loading-text">Loading your training data…</div></div>
+</div>
+
+<div class="layout" id="app" style="display:none">
+
+  <div class="header">
+    <div class="header-top">
+      <div>
+        <div class="eyebrow">Strength Block</div>
+        <div class="page-title">100kg Bench Press</div>
+        <div class="page-meta">8 week peaking block · <strong>Current 1RM: 90kg</strong></div>
+      </div>
+    </div>
+    <div class="countdown-strip" id="countdown"></div>
+  </div>
+
+  <div class="status-bar">
+    <div><span class="sdot" id="sdot"></span><span id="stxt">Connected · Supabase</span></div>
+    <div id="sright" style="font-size:11px;color:var(--text3)"></div>
+  </div>
+
+  <div class="stat-grid" id="stat-grid"></div>
+
+  <div class="section-title">Progress to 100kg</div>
+  <div id="target-wrap"></div>
+
+  <div class="section-title">Benchmarks</div>
+  <div class="bench-grid" id="bench-grid"></div>
+
+  <div class="section-title">1RM progression</div>
+  <div class="chart-card">
+    <div class="chart-title">Estimated 1RM over time (kg)</div>
+    <div id="strength-chart-wrap"></div>
+  </div>
+
+  <div id="review-section"></div>
+
+  <div class="section-title">Sessions</div>
+  <div class="week-nav" id="week-nav"></div>
+  <div class="session-list" id="session-list"></div>
+
+</div>
+
+<!-- Chat FAB -->
+<button class="chat-fab" id="chat-fab" onclick="toggleChat()" title="Ask your PT">
+  💬
+  <div class="chat-unread" id="chat-unread"></div>
+</button>
+
+<!-- Chat Panel -->
+<div class="chat-panel" id="chat-panel">
+  <div class="chat-topbar">
+    <div class="chat-avatar">🏋️</div>
+    <div class="chat-topbar-info">
+      <div class="chat-topbar-name">Your PT</div>
+      <div class="chat-topbar-sub" id="chat-status-line">Ask anything about your training</div>
+    </div>
+    <button class="chat-close-btn" onclick="toggleChat()">×</button>
+  </div>
+
+  <div class="chat-messages" id="chat-messages">
+    <div class="chat-empty" id="chat-empty">
+      <div class="chat-empty-icon">💬</div>
+      <div class="chat-empty-title">Ask your PT anything</div>
+      <div class="chat-empty-sub">Questions about your sessions, form, recovery, weight progression — anything goes.</div>
+    </div>
+  </div>
+
+  <div id="chat-suggestions" class="chat-suggestions"></div>
+
+  <div class="chat-input-row">
+    <textarea class="chat-input" id="chat-input" rows="1" placeholder="Ask something…" onkeydown="chatKeydown(event)" oninput="autoResize(this)"></textarea>
+    <button class="chat-send-btn" id="chat-send-btn" onclick="sendChat()">↑</button>
+  </div>
+</div>
+
+<script>
+const SUPA_URL = "https://kobiepbwuhhglduorxme.supabase.co";
+const SUPA_KEY = "sb_publishable_HKtKQKzm_FD2wqx3wvVUQg_5PErOqPX";
+const { createClient } = supabase;
+const db = createClient(SUPA_URL, SUPA_KEY);
+
+// ── Plan ──────────────────────────────────────────────────────────────────────
+// Start date: Monday 28 July 2026 (week after the race)
+const PLAN_START = new Date("2026-07-28");
+const ATTEMPT_DATE = new Date("2026-09-19"); // Week 8 Saturday
+
+const WEEKS = [
+  {num:1,label:"Wk 1",dates:"28 Jul–3 Aug",phase:"Volume",sessions:[
+    {day:"Mon",type:"bench",name:"Bench — Volume",desc:"4×8 @ 60kg + accessories",
+     detail:"Bench press: 4×8 @ 60kg — controlled descent, 2s pause at chest on last rep of each set\nIncline DB press: 3×10 moderate weight\nBent-over barbell row: 4×8\nFace pulls: 3×15"},
+    {day:"Wed",type:"upper",name:"Upper body — Push/Pull",desc:"Overhead + rows + pull-ups",
+     detail:"Overhead press: 3×10 @ comfortable weight\nPull-ups: 3×max (or lat pulldown 3×10)\nDumbbell row: 3×12 each side\nTricep dips or pushdowns: 3×12"},
+    {day:"Fri",type:"bench",name:"Bench + Legs",desc:"Bench volume then lower body maintenance",
+     detail:"Bench press: 4×8 @ 60kg — focus on bar path, straight down to mid-chest\n\nLEGS (keep it controlled — protect the knee):\nRomanian deadlift: 3×8 moderate weight\nSingle-leg press: 3×10 each side\nStep-ups with dumbbells: 3×10 each side\nLateral band walks: 2×15 each direction"},
+  ]},
+  {num:2,label:"Wk 2",dates:"4–10 Aug",phase:"Volume",sessions:[
+    {day:"Mon",type:"bench",name:"Bench — Volume +2.5kg",desc:"Small weekly progression",
+     detail:"Bench press: 4×8 @ 62.5kg\nIncline DB press: 3×10\nBent-over row: 4×8\nFace pulls: 3×15"},
+    {day:"Wed",type:"upper",name:"Upper body — Push/Pull",desc:"Overhead + rows + pull-ups",
+     detail:"Overhead press: 3×10\nPull-ups: 3×max\nDumbbell row: 3×12\nTricep work: 3×12"},
+    {day:"Fri",type:"bench",name:"Bench + Legs",desc:"Bench volume then lower body",
+     detail:"Bench press: 4×8 @ 62.5kg\n\nLEGS:\nRomanian deadlift: 3×8\nSingle-leg press: 3×10 each side\nStep-ups: 3×10 each side\nGlute bridge: 3×12"},
+  ]},
+  {num:3,label:"Wk 3",dates:"11–17 Aug",phase:"Volume",sessions:[
+    {day:"Mon",type:"bench",name:"Bench — Volume +2.5kg",desc:"Build to 75kg for 4×8",
+     detail:"Bench press: 4×8 @ 65kg\nIncline DB press: 3×10\nBent-over row: 4×8\nFace pulls: 3×15"},
+    {day:"Wed",type:"upper",name:"Upper body — Push/Pull",desc:"Overhead + rows + pull-ups",
+     detail:"Overhead press: 3×8 — increase weight slightly from last week\nPull-ups: 3×max\nDumbbell row: 3×12\nTricep work: 3×12"},
+    {day:"Fri",type:"bench",name:"Bench technique + Legs",desc:"Light bench then lower body",
+     detail:"Bench press: 4×5 @ 62.5kg — perfect form only, record your setup\nClose-grip bench: 3×8 @ 55kg\n\nLEGS:\nRomanian deadlift: 3×8\nBulgarian split squat: 3×8 each side (light)\nStep-ups: 3×10\nLateral band walks: 2×15"},
+  ]},
+  {num:4,label:"Wk 4",dates:"18–24 Aug",phase:"Strength",sessions:[
+    {day:"Mon",type:"bench",name:"Bench — Heavy 5s",desc:"First heavy week — 5×5",
+     detail:"Bench press: 5×5 @ 72.5kg — longer rest (3 min between sets)\nBent-over row: 4×6 (heavier than before)\nFace pulls: 3×15\nTricep pushdowns: 3×10"},
+    {day:"Wed",type:"upper",name:"Upper body — Push/Pull",desc:"Moderate — active recovery",
+     detail:"Overhead press: 3×8\nPull-ups: 4×max\nDumbbell row: 3×10\nLight band pull-aparts: 3×20 (shoulder health)"},
+    {day:"Fri",type:"bench",name:"Bench heavy + Legs",desc:"Heavy 5s then lower body",
+     detail:"Bench press: 5×5 @ 72.5–75kg\n\nLEGS (after bench — legs won't affect your pressing):\nRomanian deadlift: 3×8 — add weight vs last week\nSingle-leg press: 3×10 each side\nStep-ups with dumbbells: 3×10\nGlute bridge: 3×12"},
+  ]},
+  {num:5,label:"Wk 5",dates:"25–31 Aug",phase:"Strength",sessions:[
+    {day:"Mon",type:"bench",name:"Bench — Heavy 3s",desc:"Step up to triples",
+     detail:"Bench press: 5×3 @ 80kg — this is the key set. Take 3-4 min rest between sets\nBent-over row: 4×6\nFace pulls: 3×15\nTricep work: 3×10"},
+    {day:"Wed",type:"upper",name:"Upper body — Push/Pull",desc:"Moderate volume",
+     detail:"Overhead press: 3×6 — heavier\nPull-ups: 4×max\nDumbbell row: 3×10\nShoulder health work: band pull-aparts 3×20"},
+    {day:"Fri",type:"bench",name:"Bench heavy + Legs",desc:"Heavy triples then lower body",
+     detail:"Bench press: 5×3 @ 85–87.5kg\nClose-grip bench: 3×6 @ 72.5kg\n\nLEGS:\nRomanian deadlift: 3×6 heavier\nSingle-leg press: 3×8 each side\nStep-ups: 3×10\nLateral band walks: 2×15"},
+  ]},
+  {num:6,label:"Wk 6",dates:"1–7 Sep",phase:"Strength",sessions:[
+    {day:"Mon",type:"bench",name:"Bench — Heavy doubles",desc:"Building toward singles",
+     detail:"Bench press: 4×2 @ 85kg — should feel heavy but solid\nBent-over row: 3×6\nFace pulls: 3×15\nTricep pushdowns: 3×10"},
+    {day:"Wed",type:"upper",name:"Upper body — Push/Pull",desc:"Moderate — protect the shoulders",
+     detail:"Overhead press: 3×6\nPull-ups: 3×max\nDumbbell row: 3×10\nBand pull-aparts: 3×20"},
+    {day:"Fri",type:"bench",name:"Bench heavy + Legs",desc:"Heavy doubles then lower body",
+     detail:"Bench press: 4×2 @ 85–87.5kg\n\nLEGS (keep it sensible — you're peaking on bench):\nRomanian deadlift: 3×6\nSingle-leg press: 3×8 each side\nStep-ups: 2×10\nGlute bridge: 3×12"},
+  ]},
+  {num:7,label:"Wk 7",dates:"8–14 Sep",phase:"Peak",sessions:[
+    {day:"Mon",type:"bench",name:"Bench — Singles",desc:"Heavy single, no grinder",
+     detail:"Warm up: 60kg×5, 70kg×3, 80kg×2, 87.5kg×1\nWork set: 90kg×1 — this should feel challenging but not maximal\nStop here on bench. No more heavy sets.\nBent-over row: 3×8 moderate\nFace pulls: 3×15"},
+    {day:"Wed",type:"upper",name:"Upper body — Light",desc:"Keep it moving, nothing heavy",
+     detail:"Overhead press: 3×8 @ easy weight\nPull-ups: 3×max bodyweight\nLight DB row: 3×12\nShoulder health only — no heavy pressing"},
+    {day:"Fri",type:"bench",name:"Opener rehearsal + light legs",desc:"Rehearse warm-up then very light legs",
+     detail:"Exact warm-up you'll use on attempt day:\n60kg×5 → 70kg×3 → 80kg×2 → 87.5kg×1 → 92.5kg×1\nThat's it on bench.\n\nLEGS (light only — you're 1 week out):\nRomanian deadlift: 2×8 light\nStep-ups: 2×10 bodyweight only\nNo heavy loading this week"},
+  ]},
+  {num:8,label:"Wk 8",dates:"15–20 Sep",phase:"Attempt",sessions:[
+    {day:"Mon",type:"rest",name:"Full rest",desc:"No gym. Walk, sleep, eat well."},
+    {day:"Tue",type:"upper",name:"Very light upper",desc:"15 min only — just to feel sharp",
+     detail:"Bench press: 60kg×5, 70kg×3 only. Stop there.\nPull-ups: 2×5 easy\nThat's it. You're just maintaining feel, not training."},
+    {day:"Wed",type:"rest",name:"Rest",desc:"Stay off your feet where possible. Eat carbs."},
+    {day:"Thu",type:"rest",name:"Rest",desc:"Full rest. Kit prep. Visualise the lift."},
+    {day:"Fri",type:"rest",name:"Rest + mental prep",desc:"Light walk. Good meal. Early night. The lift is already done in your head."},
+    {day:"Sat",type:"attempt",name:"100kg Attempt Day 🏆",desc:"Warm-up: 60kg×5 → 70kg×3 → 80kg×2 → 85kg×1 → 92.5kg×1 → 100kg×1. Take 4 min rest between the last two warm-ups. Set up exactly as you practised. Drive your feet into the floor. Go."},
+  ]},
+];
+
+const TAG = {bench:"t-bench",upper:"t-upper",rest:"t-rest",attempt:"t-attempt"};
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let sessions = {}, benchmarks = {
+  orm_baseline:"90",
+  orm_w4:"", orm_w6:"", orm_attempt:""
+}, kneeLog = [];
+let currentWeek = 1;
+
+// ── Status ────────────────────────────────────────────────────────────────────
+function setStatus(state, msg, right="") {
+  const dot = document.getElementById("sdot");
+  dot.className = "sdot"+(state==="saving"?" saving":state==="err"?" err":"");
+  document.getElementById("stxt").textContent = msg;
+  document.getElementById("sright").textContent = right;
+}
+
+// ── Supabase ──────────────────────────────────────────────────────────────────
+async function loadFromSupabase() {
+  try {
+    const [sRes, bRes] = await Promise.all([
+      db.from("bench_sessions").select("*"),
+      db.from("bench_benchmarks").select("*"),
+    ]);
+    sessions = {};
+    (sRes.data||[]).forEach(r => sessions[r.key] = r.status);
+    benchmarks = {orm_baseline:"90",orm_w4:"",orm_w6:"",orm_attempt:""};
+    (bRes.data||[]).forEach(r => benchmarks[r.name] = r.value);
+    setStatus("ok","Connected · Supabase","Loaded "+new Date().toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"}));
+  } catch(e) {
+    console.error(e);
+    setStatus("err","Supabase error",e.message||"");
+  }
+}
+
+async function upsertSession(key, status) {
+  setStatus("saving","Saving…");
+  const {error} = await db.from("bench_sessions").upsert({key,status},{onConflict:"key"});
+  if (error) { setStatus("err","Save failed",error.message); return; }
+  setStatus("ok","Connected · Supabase","Saved "+new Date().toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"}));
+}
+
+async function upsertBenchmark(name, value) {
+  setStatus("saving","Saving…");
+  const {error} = await db.from("bench_benchmarks").upsert({name,value},{onConflict:"name"});
+  if (error) { setStatus("err","Save failed",error.message); return; }
+  setStatus("ok","Connected · Supabase","Saved "+new Date().toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"}));
+}
+
+// ── Countdown ─────────────────────────────────────────────────────────────────
+function renderCountdown() {
+  const days = Math.max(0,Math.ceil((ATTEMPT_DATE-new Date())/86400000));
+  const weeks = Math.floor(days/7), rem = days%7;
+  document.getElementById("countdown").innerHTML =
+    `<div class="countdown-pill"><span>${days}</span> days to attempt</div>` +
+    (weeks>0?`<div class="countdown-pill" style="background:#4a5568">${weeks}w ${rem}d remaining</div>`:"");
+}
+
+// ── Stats ─────────────────────────────────────────────────────────────────────
+function calcStats() {
+  let total=0, done=0;
+  WEEKS.forEach(w=>w.sessions.forEach((s,i)=>{
+    if(s.type==="rest") return; total++;
+    if(sessions[`w${w.num}_d${i}`]==="done") done++;
+  }));
+  return {total,done,pct:total?Math.round(done/total*100):0};
+}
+
+function renderStats() {
+  const s = calcStats();
+  const days = Math.max(0,Math.ceil((ATTEMPT_DATE-new Date())/86400000));
+  const best = benchmarks.orm_attempt || benchmarks.orm_w6 || benchmarks.orm_w4 || benchmarks.orm_baseline || "90";
+  document.getElementById("stat-grid").innerHTML=`
+    <div class="stat"><div class="stat-label">Sessions done</div><div class="stat-val">${s.done}<span style="font-size:15px;font-weight:400;color:var(--text3)">/${s.total}</span></div><div class="stat-bar"><div class="stat-bar-fill" style="width:${s.pct}%"></div></div></div>
+    <div class="stat"><div class="stat-label">Completion</div><div class="stat-val">${s.pct}<span style="font-size:15px;font-weight:400;color:var(--text3)">%</span></div></div>
+    <div class="stat"><div class="stat-label">Best 1RM</div><div class="stat-val">${best}<span style="font-size:15px;font-weight:400;color:var(--text3)">kg</span></div></div>
+    <div class="stat"><div class="stat-label">Days to attempt</div><div class="stat-val">${days}</div></div>
+  `;
+}
+
+// ── Target visual ─────────────────────────────────────────────────────────────
+function renderTarget() {
+  const baseline = parseFloat(benchmarks.orm_baseline||90);
+  const best = parseFloat(benchmarks.orm_attempt||benchmarks.orm_w6||benchmarks.orm_w4||benchmarks.orm_baseline||90);
+  const target = 100;
+  const range = target - baseline;
+  const gained = best - baseline;
+  const pct = Math.min(1, Math.max(0, gained / range));
+  const barX = Math.round(30 + pct * (555 - 30));
+  const remaining = Math.max(0, target - best);
+  const gapColor = remaining <= 0 ? "var(--teal)" : remaining <= 5 ? "var(--gold)" : "var(--orange)";
+
+  document.getElementById("target-wrap").innerHTML = `
+    <div class="target-card">
+      <div class="target-label-row">
+        <div class="target-sport" style="color:var(--iron)">🏋️ Bench press 1RM</div>
+        <div class="target-times">
+          <div class="target-time-item"><span class="target-time-val target-time-current">${best}kg</span><span class="target-time-lbl">current best</span></div>
+          <div class="target-time-item"><span class="target-time-val target-time-target">100kg</span><span class="target-time-lbl">target</span></div>
+        </div>
+      </div>
+      <svg class="bar-svg" viewBox="0 0 600 60" xmlns="http://www.w3.org/2000/svg">
+        <rect x="0" y="0" width="600" height="60" rx="8" fill="#2c3e50" opacity="0.08"/>
+        <rect x="0" y="0" width="600" height="60" rx="8" fill="none" stroke="#2c3e50" stroke-width="0.5" opacity="0.3"/>
+        <rect x="16" y="20" width="568" height="20" rx="4" fill="#2c3e50" opacity="0.08"/>
+        <text x="26" y="16" font-size="9" fill="#2c3e50" opacity="0.6">90kg baseline</text>
+        <text x="545" y="16" font-size="9" fill="#1D9E75" opacity="0.9" font-weight="500">100kg 🏆</text>
+        <line x1="580" y1="14" x2="580" y2="46" stroke="#1D9E75" stroke-width="1.5" stroke-dasharray="3,2" opacity="0.7"/>
+        <text x="300" y="16" font-size="9" fill="#2c3e50" opacity="0.4" text-anchor="middle">95kg</text>
+        <line x1="300" y1="17" x2="300" y2="46" stroke="#2c3e50" stroke-width="0.5" stroke-dasharray="2,3" opacity="0.2"/>
+        <circle cx="${barX}" cy="30" r="9" fill="var(--iron)"/>
+        <text x="${barX}" y="33" font-size="8" fill="white" text-anchor="middle" font-weight="500">${best}</text>
+        <circle cx="580" cy="30" r="7" fill="none" stroke="#1D9E75" stroke-width="1.5" stroke-dasharray="2,1"/>
+        <text x="580" y="33" font-size="7" fill="#1D9E75" text-anchor="middle">tgt</text>
+      </svg>
+      <div class="target-stat-row">
+        <div class="target-stat"><div class="target-stat-val" style="color:var(--iron)">${best}kg</div><div class="target-stat-lbl">current 1RM</div></div>
+        <div class="target-stat"><div class="target-stat-val" style="color:${gapColor}">${remaining <= 0 ? "done! 🏆" : remaining+"kg to go"}</div><div class="target-stat-lbl">gap to target</div></div>
+        <div class="target-stat"><div class="target-stat-val" style="color:var(--teal)">${Math.round(pct*100)}%</div><div class="target-stat-lbl">of the way there</div></div>
+      </div>
+    </div>
+  `;
+}
+
+// ── Benchmarks ────────────────────────────────────────────────────────────────
+function kgDelta(base, val) {
+  const a = parseFloat(base), b = parseFloat(val);
+  if (!a||!b) return "";
+  const d = b - a;
+  return d > 0 ? `<span class="delta delta-better">+${d}kg</span>` : "";
+}
+
+function benchRowHtml(label, key, base) {
+  const val = benchmarks[key];
+  if (val) return `<div class="bench-row"><span class="bench-row-label">${label}</span><div class="bench-row-val"><span class="bench-time">${val}kg</span>${kgDelta(base,val)}<button class="bench-btn" onclick="clearBench('${key}')">edit</button></div></div>`;
+  return `<div class="bench-row"><span class="bench-row-label">${label}</span><div class="bench-row-val"><input class="bench-input" type="text" id="b_${key}" placeholder="kg"><button class="bench-btn" onclick="saveBench('${key}')">Save</button></div></div>`;
+}
+
+function renderBenchmarks() {
+  document.getElementById("bench-grid").innerHTML = `
+    <div class="bench-card">
+      <div class="bench-header"><div class="bench-icon">🏋️</div><span class="bench-card-title">1RM benchmarks</span></div>
+      <div class="bench-row"><span class="bench-row-label">Baseline</span><div class="bench-row-val"><span class="bench-time">90kg</span></div></div>
+      ${benchRowHtml("Week 4","orm_w4","90")}
+      ${benchRowHtml("Week 6","orm_w6",benchmarks.orm_w4||"90")}
+      ${benchRowHtml("Attempt","orm_attempt",benchmarks.orm_w6||benchmarks.orm_w4||"90")}
+    </div>
+    <div class="bench-card">
+      <div class="bench-header"><div class="bench-icon">📋</div><span class="bench-card-title">Attempt day plan</span></div>
+      <div class="bench-row"><span class="bench-row-label">Warm-up 1</span><div class="bench-row-val"><span class="bench-time">60kg × 5</span></div></div>
+      <div class="bench-row"><span class="bench-row-label">Warm-up 2</span><div class="bench-row-val"><span class="bench-time">70kg × 3</span></div></div>
+      <div class="bench-row"><span class="bench-row-label">Warm-up 3</span><div class="bench-row-val"><span class="bench-time">80kg × 2</span></div></div>
+      <div class="bench-row"><span class="bench-row-label">Opener</span><div class="bench-row-val"><span class="bench-time">85kg × 1</span></div></div>
+      <div class="bench-row"><span class="bench-row-label">Second</span><div class="bench-row-val"><span class="bench-time">92.5kg × 1</span></div></div>
+      <div class="bench-row" style="border-bottom:none"><span class="bench-row-label" style="font-weight:600;color:var(--gold)">Attempt</span><div class="bench-row-val"><span class="bench-time" style="color:var(--gold);font-size:16px">100kg × 1 🏆</span></div></div>
+    </div>
+  `;
+}
+window.saveBench = async function(key) {
+  const v = document.getElementById("b_"+key)?.value?.trim();
+  if (!v) return;
+  benchmarks[key] = v;
+  renderAll();
+  await upsertBenchmark(key, v);
+};
+window.clearBench = function(key) { benchmarks[key]=""; renderBenchmarks(); renderTarget(); };
+
+// ── Strength chart ────────────────────────────────────────────────────────────
+function renderStrengthChart() {
+  const points = [];
+  if (benchmarks.orm_baseline) points.push({label:"Baseline", val:parseFloat(benchmarks.orm_baseline)});
+  if (benchmarks.orm_w4) points.push({label:"Week 4", val:parseFloat(benchmarks.orm_w4)});
+  if (benchmarks.orm_w6) points.push({label:"Week 6", val:parseFloat(benchmarks.orm_w6)});
+  if (benchmarks.orm_attempt) points.push({label:"Attempt", val:parseFloat(benchmarks.orm_attempt)});
+
+  const wrap = document.getElementById("strength-chart-wrap");
+  if (points.length < 2) {
+    wrap.innerHTML = `<div class="chart-empty"><div style="font-size:24px;opacity:.4">📊</div><div>Fills in as you log benchmarks</div></div>`;
+    return;
+  }
+  wrap.innerHTML = `<div class="chart-wrap"><canvas id="strength-chart"></canvas></div>`;
+  const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+  const gridColor = isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)";
+  const textColor = isDark ? "#5c5650" : "#a09a94";
+  new Chart(document.getElementById("strength-chart").getContext("2d"), {
+    type: "line",
+    data: {
+      labels: points.map(p=>p.label),
+      datasets: [
+        {
+          label: "1RM",
+          data: points.map(p=>p.val),
+          borderColor: "#2c3e50",
+          backgroundColor: "rgba(44,62,80,0.1)",
+          fill: true, tension: 0.3, pointRadius: 5, pointHoverRadius: 7,
+          order: 2,
+        },
+        {
+          label: "Target (100kg)",
+          data: points.map(()=>100),
+          borderColor: "#1D9E75",
+          backgroundColor: "transparent",
+          borderWidth: 1.5, borderDash: [5,4],
+          pointRadius: 0, fill: false, tension: 0,
+          order: 1,
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { font:{size:11}, color:textColor, boxWidth:10 } } },
+      scales: {
+        x: { grid:{color:gridColor}, ticks:{color:textColor,font:{size:10}} },
+        y: {
+          grid:{color:gridColor}, ticks:{color:textColor,font:{size:10},callback:v=>v+"kg"},
+          min: 85, max: 105,
+        }
+      }
+    }
+  });
+}
+
+// ── Week tabs ─────────────────────────────────────────────────────────────────
+function renderWeekNav() {
+  document.getElementById("week-nav").innerHTML = WEEKS.map(w => {
+    const done = w.sessions.filter((_,i)=>sessions[`w${w.num}_d${i}`]==="done").length;
+    const phaseColor = w.phase==="Attempt" ? "var(--gold)" : w.phase==="Peak" ? "var(--teal)" : w.phase==="Strength" ? "var(--iron)" : "var(--text2)";
+    return `<button class="wtab${w.num===currentWeek?" active":""}" onclick="setWeek(${w.num})" style="${w.num===currentWeek?"":""}">
+      ${w.label}${done?`<span class="dot"></span>`:""}
+    </button>`;
+  }).join("");
+}
+window.setWeek = function(n) { currentWeek=n; renderWeekNav(); renderSessions(); maybeShowReview(); };
+
+// ── Sessions ──────────────────────────────────────────────────────────────────
+function renderSessions() {
+  const w = WEEKS.find(x=>x.num===currentWeek);
+  document.getElementById("session-list").innerHTML = w.sessions.map((s,i) => {
+    const key = `w${w.num}_d${i}`;
+    const status = sessions[key]||"pending";
+    const detailHtml = s.detail
+      ? `<div class="sdetail">${s.detail.replace(/\n/g,"<br>")}</div>`
+      : "";
+    const btns = status==="pending"
+      ? `<div class="action-btns"><button class="abtn done-btn" onclick="markSession('${key}','done')">✓ Done</button><button class="abtn skip-btn" onclick="markSession('${key}','skip')">Skip</button></div>`
+      : `<div class="action-btns"><button class="abtn" onclick="markSession('${key}','pending')">Undo</button></div>`;
+    return `<div class="srow${status==="done"?" done":""}${status==="skip"?" skipped":""}">
+      <span class="sday">${s.day}</span>
+      <div><div class="sname"><span class="tag ${TAG[s.type]||"t-rest"}">${s.type}</span>${s.name}</div><div class="sdesc">${s.desc}</div>${detailHtml}</div>
+      ${btns}</div>`;
+  }).join("");
+}
+
+window.markSession = async function(key, status) {
+  sessions[key] = status; renderAll(); await upsertSession(key, status);
+};
+
+// ── Auto week ─────────────────────────────────────────────────────────────────
+function autoWeek() {
+  const starts = [
+    new Date("2026-07-28"), new Date("2026-08-04"), new Date("2026-08-11"),
+    new Date("2026-08-18"), new Date("2026-08-25"), new Date("2026-09-01"),
+    new Date("2026-09-08"), new Date("2026-09-15"),
+  ];
+  const today = new Date();
+  for (let i=starts.length-1;i>=0;i--) { if(today>=starts[i]){currentWeek=i+1;break;} }
+}
+
+// ── Weekly Review ─────────────────────────────────────────────────────────────
+let reviewCache = {}; // keyed by week num
+
+function isWeekComplete(weekNum) {
+  const w = WEEKS.find(x => x.num === weekNum);
+  if (!w) return false;
+  const nonRestSessions = w.sessions.filter(s => s.type !== "rest");
+  if (nonRestSessions.length === 0) return true;
+  return nonRestSessions.every((s, rawIdx) => {
+    const i = w.sessions.indexOf(s);
+    const key = `w${weekNum}_d${i}`;
+    return sessions[key] === "done" || sessions[key] === "skip";
+  });
+}
+
+function isFridayAfterFour() {
+  const now = new Date();
+  return now.getDay() === 5 && now.getHours() >= 16;
+}
+
+function buildReviewPrompt(weekNum) {
+  const w = WEEKS.find(x => x.num === weekNum);
+  const nextW = WEEKS.find(x => x.num === weekNum + 1);
+  const doneCount = w.sessions.filter((s, i) => sessions[`w${w.num}_d${i}`] === "done").length;
+  const skipCount = w.sessions.filter((s, i) => sessions[`w${w.num}_d${i}`] === "skip").length;
+  const best1rm = benchmarks.orm_attempt || benchmarks.orm_w6 || benchmarks.orm_w4 || benchmarks.orm_baseline || "90";
+
+  const sessionSummaries = w.sessions.map((s, i) => {
+    const st = sessions[`w${w.num}_d${i}`] || "pending";
+    return `  - ${s.day} (${s.name}): ${st.toUpperCase()}${s.detail ? "\n    Prescribed: " + s.detail.replace(/\n/g, " | ") : ""}`;
+  }).join("\n");
+
+  const nextSessionSummaries = nextW ? nextW.sessions.map(s =>
+    `  - ${s.day}: ${s.name} — ${s.desc}`
+  ).join("\n") : "No more weeks — this is the attempt week.";
+
+  return `You are a personal trainer reviewing a client's bench press peaking block. Speak directly to the athlete in second person ("you"), like a real PT giving a Friday debrief — warm but direct, no fluff.
+
+ATHLETE CONTEXT:
+- Goal: bench press 100kg (current 1RM: 90kg)
+- Block: 8-week peaking program, Week ${weekNum} of 8
+- Phase: ${w.phase}
+- Current best 1RM recorded: ${best1rm}kg
+- Week dates: ${w.dates}
+
+WEEK ${weekNum} SESSIONS COMPLETED:
+${sessionSummaries}
+
+Sessions done: ${doneCount}, skipped: ${skipCount} out of ${w.sessions.filter(s => s.type !== "rest").length} training sessions.
+
+NEXT WEEK PLAN (Week ${weekNum + 1 <= 8 ? weekNum + 1 : "N/A"}):
+${nextSessionSummaries}
+
+Write a weekly review with these sections, using exactly these markdown headings:
+
+### Week ${weekNum} Summary
+Brief, direct recap of what they did this week — the training stimulus, any skips, and how the week fits the overall trajectory to 100kg.
+
+### What to watch
+1–3 specific things to pay attention to based on the sets/reps prescribed this week — form cues, fatigue signs, recovery markers. Be specific to bench press and this athlete's situation.
+
+### Next week adjustments
+Concrete, actionable coaching notes for Week ${weekNum + 1}. What should they push, what should they protect, any small tweaks to execution. If they skipped sessions, address that directly. Don't just repeat the plan back — add the coaching layer on top of it.
+
+### Mindset note
+One short paragraph — the mental framing for where they are in the block. Honest, not hype.
+
+Keep total length to ~250 words. Avoid generic advice. Be specific to bench press peaking.`;
+}
+
+async function generateReview(weekNum, force = false) {
+  if (reviewCache[weekNum] && !force) return; // already generated
+
+  const section = document.getElementById("review-section");
+
+  // Show generating state
+  section.innerHTML = `
+    <div class="section-title">Friday Review — Week ${weekNum}</div>
+    <div class="review-card">
+      <div class="review-header">
+        <div class="review-header-left">
+          <span class="review-icon">📋</span>
+          <div><div class="review-title">PT Weekly Review</div><div class="review-subtitle">Week ${weekNum} · ${WEEKS.find(w=>w.num===weekNum)?.phase}</div></div>
+        </div>
+        <span class="review-badge">Generating…</span>
+      </div>
+      <div class="review-generating"><div class="review-spinner"></div>Analysing your week and building your review…</div>
+    </div>`;
+
+  try {
+    const prompt = buildReviewPrompt(weekNum);
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-6",
+        max_tokens: 1000,
+        messages: [{ role: "user", content: prompt }]
+      })
+    });
+    const data = await res.json();
+    const text = data.content?.find(b => b.type === "text")?.text || "";
+    if (!text) throw new Error("No response from model");
+
+    reviewCache[weekNum] = text;
+    renderReview(weekNum);
+  } catch (err) {
+    console.error(err);
+    section.innerHTML = `
+      <div class="section-title">Friday Review — Week ${weekNum}</div>
+      <div class="review-card">
+        <div class="review-header">
+          <div class="review-header-left"><span class="review-icon">📋</span><div><div class="review-title">PT Weekly Review</div></div></div>
+          <span class="review-badge">Error</span>
+        </div>
+        <div class="review-body"><div class="review-error">Couldn't generate review: ${err.message}. <button class="bench-btn" onclick="generateReview(${weekNum},true)">Retry</button></div></div>
+      </div>`;
+  }
+}
+
+function markdownToHtml(md) {
+  return md
+    .replace(/### (.+)/g, '<h3>$1</h3>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/`(.+?)`/g, '<span class="highlight">$1</span>')
+    .replace(/^- (.+)$/gm, '<li>$1</li>')
+    .replace(/(<li>.*<\/li>)/gs, m => `<ul>${m}</ul>`)
+    .replace(/\n\n/g, '</p><p>')
+    .replace(/^(?!<[hup])/gm, '')
+    .split('\n').filter(l => l.trim()).map(l => {
+      if (l.startsWith('<h3>') || l.startsWith('<ul>') || l.startsWith('<li>')) return l;
+      if (!l.startsWith('<p>') && !l.startsWith('</p>')) return `<p>${l}</p>`;
+      return l;
+    }).join('\n');
+}
+
+function renderReview(weekNum) {
+  const w = WEEKS.find(x => x.num === weekNum);
+  const text = reviewCache[weekNum];
+  const now = new Date();
+  const timeStr = now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+
+  const htmlContent = markdownToHtml(text);
+
+  document.getElementById("review-section").innerHTML = `
+    <div class="section-title">Friday Review — Week ${weekNum}</div>
+    <div class="review-card">
+      <div class="review-header">
+        <div class="review-header-left">
+          <span class="review-icon">📋</span>
+          <div><div class="review-title">PT Weekly Review</div><div class="review-subtitle">Week ${weekNum} · ${w.phase} · ${w.dates}</div></div>
+        </div>
+        <span class="review-badge">Week ${weekNum} of 8</span>
+      </div>
+      <div class="review-body">
+        <div class="review-content">${htmlContent}</div>
+        <div class="review-meta">Generated ${timeStr} · Based on ${w.sessions.filter((s,i)=>sessions[`w${weekNum}_d${i}`]==="done").length} sessions completed · <button class="bench-btn" onclick="generateReview(${weekNum},true)" style="font-size:11px">Regenerate</button></div>
+      </div>
+    </div>`;
+}
+
+function maybeShowReview() {
+  const section = document.getElementById("review-section");
+  const weekComplete = isWeekComplete(currentWeek);
+  const fridayAfterFour = isFridayAfterFour();
+
+  // Show review if: week complete AND (it's Friday 4pm+ OR already cached)
+  if (weekComplete && (fridayAfterFour || reviewCache[currentWeek])) {
+    if (reviewCache[currentWeek]) {
+      renderReview(currentWeek);
+    } else {
+      generateReview(currentWeek);
+    }
+    return;
+  }
+
+  // Show a teaser button if week is complete but not yet Friday 4pm
+  if (weekComplete && !fridayAfterFour) {
+    const now = new Date();
+    const day = now.getDay(); // 0=Sun, 5=Fri
+    const daysToFri = ((5 - day + 7) % 7) || (now.getHours() < 16 ? 0 : 7);
+    const isToday = daysToFri === 0;
+    section.innerHTML = `
+      <div class="section-title">Friday Review — Week ${currentWeek}</div>
+      <div class="review-card" style="border-style:dashed;opacity:.75">
+        <button class="review-trigger-btn" onclick="generateReview(${currentWeek})">
+          <span class="ricon">📋</span>
+          <div>
+            <div style="font-weight:600;color:var(--text);font-size:13px">Week ${currentWeek} complete — PT review ready</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:2px">${isToday ? "Unlocks at 4pm today" : `Unlocks Friday at 4pm · available ${daysToFri === 1 ? "tomorrow" : "in "+daysToFri+" days"}`} · or tap to generate now</div>
+          </div>
+        </button>
+      </div>`;
+    return;
+  }
+
+  // Week not complete — show progress nudge
+  if (currentWeek <= 8) {
+    const w = WEEKS.find(x => x.num === currentWeek);
+    const remaining = w.sessions.filter((s, i) => s.type !== "rest" && !sessions[`w${currentWeek}_d${i}`]).length;
+    if (remaining > 0) {
+      section.innerHTML = `
+        <div class="section-title">Friday Review — Week ${currentWeek}</div>
+        <div class="review-card" style="border-color:var(--border);opacity:.6">
+          <div class="review-generating" style="color:var(--text3)">
+            <span style="font-size:18px">🔒</span>
+            <div><div style="font-size:13px;font-weight:500">Review unlocks when week ${currentWeek} is complete</div><div style="font-size:11px;margin-top:2px">${remaining} session${remaining!==1?"s":""} still to mark done — finish the week and your PT review generates automatically on Friday at 4pm</div></div>
+          </div>
+        </div>`;
+    } else {
+      section.innerHTML = "";
+    }
+  }
+}
+
+function renderAll() {
+  renderCountdown(); renderStats(); renderTarget(); renderBenchmarks();
+  renderStrengthChart(); renderWeekNav(); renderSessions(); maybeShowReview();
+}
+
+// ── Chat ──────────────────────────────────────────────────────────────────────
+let chatOpen = false;
+let chatHistory = []; // {role, content}
+let chatWaiting = false;
+
+const CHAT_SUGGESTIONS_POOL = [
+  "Should I push harder if last week felt easy?",
+  "My shoulder feels a bit tight — what should I watch?",
+  "How important is the accessory work?",
+  "What does RPE mean for my sets?",
+  "Can I swap the Friday session to Saturday?",
+  "How do I know if I'm ready for 100kg?",
+  "What if I miss a session this week?",
+  "How much should I eat on training days?",
+  "Why close-grip bench — what does it do?",
+  "Should I use a belt for the attempt?",
+];
+
+function buildChatSystemPrompt() {
+  const w = WEEKS.find(x => x.num === currentWeek);
+  const best1rm = benchmarks.orm_attempt || benchmarks.orm_w6 || benchmarks.orm_w4 || benchmarks.orm_baseline || "90";
+  const daysToAttempt = Math.max(0, Math.ceil((ATTEMPT_DATE - new Date()) / 86400000));
+  const sessionStatus = w.sessions.map((s, i) => {
+    const st = sessions[`w${w.num}_d${i}`] || "pending";
+    return `${s.day} — ${s.name}: ${st}`;
+  }).join("\n");
+
+  const allSessionsContext = WEEKS.map(wk => {
+    const sessCtx = wk.sessions.map((s, i) => {
+      const st = sessions[`w${wk.num}_d${i}`] || "pending";
+      return `  ${s.day}: ${s.name} (${st})${s.detail ? " — " + s.desc : ""}`;
+    }).join("\n");
+    return `Week ${wk.num} (${wk.phase}):\n${sessCtx}`;
+  }).join("\n\n");
+
+  return `You are a personal trainer for an athlete training to bench press 100kg. You're knowledgeable, direct, and encouraging — like a good PT who knows their athlete well. Keep replies concise and practical (2-4 short paragraphs max unless a detailed explanation is genuinely needed). Use plain language, no waffle.
+
+ATHLETE PROFILE:
+- Goal: bench press 100kg on 19 September 2026
+- Starting 1RM: 90kg (10kg gap to close)
+- Current best 1RM logged: ${best1rm}kg
+- ${daysToAttempt} days until attempt
+- Currently in Week ${currentWeek} of 8 (${w.phase} phase)
+
+THIS WEEK (Week ${currentWeek} — ${w.label}, ${w.dates}):
+${sessionStatus}
+
+FULL PROGRAM OVERVIEW:
+${allSessionsContext}
+
+COACHING NOTES:
+- The athlete has a knee that needs careful management — avoid loading the knee heavily, prefer single-leg work over bilateral squats
+- The block is 8 weeks: Weeks 1-3 Volume, Weeks 4-6 Strength, Week 7 Peak, Week 8 Attempt
+- Bench press is the priority lift — everything else is accessory
+- The attempt warm-up is: 60×5 → 70×3 → 80×2 → 85×1 → 92.5×1 → 100×1
+
+Answer questions based on this context. If asked about something outside your knowledge, say so briefly. Never make up specific numbers. Be a real coach, not a disclaimer machine.`;
+}
+
+function toggleChat() {
+  chatOpen = !chatOpen;
+  const panel = document.getElementById("chat-panel");
+  panel.classList.toggle("open", chatOpen);
+  if (chatOpen) {
+    clearUnread();
+    renderSuggestions();
+    setTimeout(() => document.getElementById("chat-input").focus(), 220);
+  }
+}
+
+function clearUnread() {
+  const badge = document.getElementById("chat-unread");
+  badge.style.display = "none";
+  badge.textContent = "";
+}
+
+function showUnread() {
+  if (chatOpen) return;
+  const badge = document.getElementById("chat-unread");
+  badge.style.display = "flex";
+  badge.textContent = "1";
+}
+
+function renderSuggestions() {
+  const el = document.getElementById("chat-suggestions");
+  if (chatHistory.length > 0) { el.innerHTML = ""; return; }
+  // Pick 3 random suggestions
+  const picks = [...CHAT_SUGGESTIONS_POOL].sort(() => Math.random() - 0.5).slice(0, 3);
+  el.innerHTML = picks.map(s =>
+    `<button class="chat-suggestion" onclick="useSuggestion(this)">${s}</button>`
+  ).join("");
+}
+
+window.useSuggestion = function(btn) {
+  document.getElementById("chat-input").value = btn.textContent;
+  sendChat();
+};
+
+function autoResize(el) {
+  el.style.height = "auto";
+  el.style.height = Math.min(el.scrollHeight, 100) + "px";
+}
+
+function chatKeydown(e) {
+  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendChat(); }
+}
+
+function appendMessage(role, html) {
+  const messages = document.getElementById("chat-messages");
+  // Remove empty state
+  const empty = document.getElementById("chat-empty");
+  if (empty) empty.remove();
+
+  const isUser = role === "user";
+  const initials = isUser ? "You" : "PT";
+  const div = document.createElement("div");
+  div.className = `cmsg${isUser ? " user" : ""}`;
+  div.innerHTML = `
+    <div class="cmsg-avatar">${initials}</div>
+    <div class="cmsg-bubble">${html}</div>`;
+  messages.appendChild(div);
+  messages.scrollTop = messages.scrollHeight;
+  return div;
+}
+
+function showTyping() {
+  const messages = document.getElementById("chat-messages");
+  const div = document.createElement("div");
+  div.className = "cmsg";
+  div.id = "chat-typing-indicator";
+  div.innerHTML = `<div class="cmsg-avatar">PT</div><div class="cmsg-bubble chat-typing"><span></span><span></span><span></span></div>`;
+  messages.appendChild(div);
+  messages.scrollTop = messages.scrollHeight;
+}
+
+function hideTyping() {
+  document.getElementById("chat-typing-indicator")?.remove();
+}
+
+function chatMarkdown(text) {
+  return text
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/^- (.+)$/gm, '<li>$1</li>')
+    .replace(/(<li>[\s\S]*?<\/li>)/g, m => `<ul>${m}</ul>`)
+    .replace(/\n\n+/g, '</p><p>')
+    .replace(/\n/g, '<br>')
+    .replace(/^(?!<[upo])/gm, '')
+    .split('\n').map(l => {
+      if (l.startsWith('<ul>') || l.startsWith('<li>')) return l;
+      if (!l.startsWith('<p>') && !l.startsWith('</p>') && l.trim()) return `<p>${l}</p>`;
+      return l;
+    }).join('');
+}
+
+async function sendChat() {
+  if (chatWaiting) return;
+  const input = document.getElementById("chat-input");
+  const text = input.value.trim();
+  if (!text) return;
+
+  input.value = "";
+  input.style.height = "auto";
+  document.getElementById("chat-suggestions").innerHTML = "";
+  document.getElementById("chat-send-btn").disabled = true;
+  chatWaiting = true;
+
+  // Add user message to UI and history
+  appendMessage("user", text.replace(/</g, "&lt;").replace(/>/g, "&gt;"));
+  chatHistory.push({ role: "user", content: text });
+
+  // Update status line
+  document.getElementById("chat-status-line").textContent = "Thinking…";
+
+  showTyping();
+
+  try {
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-6",
+        max_tokens: 1000,
+        system: buildChatSystemPrompt(),
+        messages: chatHistory,
+      })
+    });
+
+    const data = await res.json();
+    const reply = data.content?.find(b => b.type === "text")?.text || "Sorry, something went wrong.";
+
+    chatHistory.push({ role: "assistant", content: reply });
+    hideTyping();
+    appendMessage("assistant", chatMarkdown(reply));
+    document.getElementById("chat-status-line").textContent = "Ask anything about your training";
+
+    if (!chatOpen) showUnread();
+
+  } catch (err) {
+    hideTyping();
+    appendMessage("assistant", `<span style="color:var(--orange)">Connection error — try again.</span>`);
+    document.getElementById("chat-status-line").textContent = "Ask anything about your training";
+    // Remove the failed user message from history
+    chatHistory.pop();
+  }
+
+  chatWaiting = false;
+  document.getElementById("chat-send-btn").disabled = false;
+  document.getElementById("chat-input").focus();
+}
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+(async()=>{
+  autoWeek();
+  await loadFromSupabase();
+  document.getElementById("loading").style.display="none";
+  document.getElementById("app").style.display="block";
+  renderAll();
+})();
+</script>
+</body>
+</html>
