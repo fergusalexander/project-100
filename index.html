@@ -132,6 +132,26 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sa
 .abtn.done-btn:hover { background: var(--moss-light); color: var(--moss); border-color: transparent; }
 .abtn.skip-btn:hover { background: #fce8e8; color: #922; border-color: transparent; }
 
+/* Set log */
+.set-log { margin-top: 8px; }
+.set-log-rows { display: flex; flex-direction: column; gap: 4px; margin-bottom: 6px; }
+.set-log-row { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+.set-num { font-size: 10px; font-weight: 600; color: var(--text3); width: 22px; text-align: right; flex-shrink: 0; }
+.set-input { width: 58px; padding: 5px 7px; border-radius: 6px; border: 0.5px solid var(--border2); background: var(--bg2); color: var(--text); font-size: 13px; font-family: inherit; text-align: center; }
+.set-input:focus { outline: none; border-color: var(--iron); }
+.set-x { font-size: 11px; color: var(--text3); }
+.set-delete { background: none; border: none; color: var(--text3); cursor: pointer; font-size: 14px; padding: 0 2px; line-height: 1; }
+.set-delete:hover { color: #b44; }
+.set-logged { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
+.set-chip { font-size: 11px; font-weight: 600; background: var(--iron-light); color: var(--iron); padding: 3px 8px; border-radius: 5px; }
+.set-log-btns { display: flex; gap: 6px; flex-wrap: wrap; }
+.set-add-btn { font-size: 11px; padding: 5px 11px; border-radius: 6px; border: 0.5px dashed var(--border2); background: transparent; color: var(--text3); cursor: pointer; font-family: inherit; }
+.set-add-btn:hover { border-color: var(--iron); color: var(--iron); }
+.set-save-btn { font-size: 11px; padding: 5px 11px; border-radius: 6px; border: none; background: var(--iron); color: #fff; cursor: pointer; font-family: inherit; }
+.set-save-btn:hover { opacity: .85; }
+.set-toggle-btn { font-size: 11px; padding: 4px 9px; border-radius: 6px; border: 0.5px solid var(--border2); background: transparent; color: var(--text3); cursor: pointer; }
+.set-toggle-btn:hover { background: var(--bg2); }
+
 /* Chart */
 .chart-card { background: var(--card); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 14px 16px; box-shadow: var(--shadow); }
 .chart-title { font-size: 12px; font-weight: 600; color: var(--text2); margin-bottom: 12px; }
@@ -520,6 +540,10 @@ let sessions = {}, benchmarks = {
   orm_w4:"", orm_w6:"", orm_attempt:""
 }, kneeLog = [];
 let currentWeek = 1;
+// setLogs: { [sessionKey]: [{weight, reps}] }
+let setLogs = {};
+// editing state: which session has the log input open
+let setLogOpen = {};
 
 // ── Status ────────────────────────────────────────────────────────────────────
 function setStatus(state, msg, right="") {
@@ -532,19 +556,29 @@ function setStatus(state, msg, right="") {
 // ── Supabase ──────────────────────────────────────────────────────────────────
 async function loadFromSupabase() {
   try {
-    const [sRes, bRes] = await Promise.all([
+    const [sRes, bRes, lRes] = await Promise.all([
       db.from("bench_sessions").select("*"),
       db.from("bench_benchmarks").select("*"),
+      db.from("bench_set_logs").select("*"),
     ]);
     sessions = {};
     (sRes.data||[]).forEach(r => sessions[r.key] = r.status);
     benchmarks = {orm_baseline:"90",orm_w4:"",orm_w6:"",orm_attempt:""};
     (bRes.data||[]).forEach(r => benchmarks[r.name] = r.value);
+    setLogs = {};
+    (lRes.data||[]).forEach(r => { try { setLogs[r.key] = JSON.parse(r.sets); } catch(e){} });
     setStatus("ok","Connected · Supabase","Loaded "+new Date().toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"}));
   } catch(e) {
     console.error(e);
     setStatus("err","Supabase error",e.message||"");
   }
+}
+
+async function upsertSetLog(key, sets) {
+  setStatus("saving","Saving…");
+  const {error} = await db.from("bench_set_logs").upsert({key, sets: JSON.stringify(sets)},{onConflict:"key"});
+  if (error) { setStatus("err","Save failed",error.message); return; }
+  setStatus("ok","Connected · Supabase","Saved "+new Date().toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"}));
 }
 
 async function upsertSession(key, status) {
@@ -747,6 +781,81 @@ function renderWeekNav() {
 window.setWeek = function(n) { currentWeek=n; renderWeekNav(); renderSessions(); maybeShowReview(); };
 
 // ── Sessions ──────────────────────────────────────────────────────────────────
+function setLogHtml(key, type) {
+  if (type === "rest") return "";
+  const logged = setLogs[key] || [];
+  const isOpen = setLogOpen[key];
+
+  if (!isOpen && logged.length === 0) {
+    return `<div class="set-log"><div class="set-log-btns"><button class="set-toggle-btn" onclick="openSetLog('${key}')">+ Log sets</button></div></div>`;
+  }
+
+  if (!isOpen && logged.length > 0) {
+    const chips = logged.map((s,i) => `<span class="set-chip">${s.weight}kg × ${s.reps}</span>`).join("");
+    return `<div class="set-log"><div class="set-logged">${chips}</div><div class="set-log-btns"><button class="set-toggle-btn" onclick="openSetLog('${key}')">Edit sets</button></div></div>`;
+  }
+
+  // open editing state
+  const rows = logged.length > 0 ? logged : [{weight:"",reps:""}];
+  const rowsHtml = rows.map((s,i) => `
+    <div class="set-log-row">
+      <span class="set-num">S${i+1}</span>
+      <input class="set-input" type="number" placeholder="kg" value="${s.weight}" id="sl_kg_${key}_${i}" inputmode="decimal">
+      <span class="set-x">×</span>
+      <input class="set-input" type="number" placeholder="reps" value="${s.reps}" id="sl_rp_${key}_${i}" inputmode="numeric">
+      <button class="set-delete" onclick="removeSetRow('${key}',${i})" title="Remove">×</button>
+    </div>`).join("");
+
+  return `<div class="set-log">
+    <div class="set-log-rows" id="slrows_${key}">${rowsHtml}</div>
+    <div class="set-log-btns">
+      <button class="set-add-btn" onclick="addSetRow('${key}')">+ Set</button>
+      <button class="set-save-btn" onclick="saveSetLog('${key}')">Save</button>
+      <button class="set-toggle-btn" onclick="closeSetLog('${key}')">Cancel</button>
+    </div>
+  </div>`;
+}
+
+window.openSetLog = function(key) { setLogOpen[key] = true; renderSessions(); };
+window.closeSetLog = function(key) { setLogOpen[key] = false; renderSessions(); };
+
+window.addSetRow = function(key) {
+  const existing = setLogs[key] || [];
+  // Read current inputs before re-render
+  const current = readSetInputs(key);
+  setLogs[key] = [...current, {weight:"",reps:""}];
+  setLogOpen[key] = true;
+  renderSessions();
+};
+
+window.removeSetRow = function(key, idx) {
+  const current = readSetInputs(key);
+  current.splice(idx, 1);
+  setLogs[key] = current.length ? current : [];
+  setLogOpen[key] = current.length > 0;
+  renderSessions();
+};
+
+function readSetInputs(key) {
+  const sets = [];
+  let i = 0;
+  while (document.getElementById(`sl_kg_${key}_${i}`)) {
+    const w = document.getElementById(`sl_kg_${key}_${i}`)?.value?.trim();
+    const r = document.getElementById(`sl_rp_${key}_${i}`)?.value?.trim();
+    if (w || r) sets.push({weight: w||"", reps: r||""});
+    i++;
+  }
+  return sets;
+}
+
+window.saveSetLog = async function(key) {
+  const sets = readSetInputs(key).filter(s => s.weight && s.reps);
+  setLogs[key] = sets;
+  setLogOpen[key] = false;
+  renderSessions();
+  await upsertSetLog(key, sets);
+};
+
 function renderSessions() {
   const w = WEEKS.find(x=>x.num===currentWeek);
   document.getElementById("session-list").innerHTML = w.sessions.map((s,i) => {
@@ -755,12 +864,13 @@ function renderSessions() {
     const detailHtml = s.detail
       ? `<div class="sdetail">${s.detail.replace(/\n/g,"<br>")}</div>`
       : "";
+    const logHtml = setLogHtml(key, s.type);
     const btns = status==="pending"
       ? `<div class="action-btns"><button class="abtn done-btn" onclick="markSession('${key}','done')">✓ Done</button><button class="abtn skip-btn" onclick="markSession('${key}','skip')">Skip</button></div>`
       : `<div class="action-btns"><button class="abtn" onclick="markSession('${key}','pending')">Undo</button></div>`;
     return `<div class="srow${status==="done"?" done":""}${status==="skip"?" skipped":""}">
       <span class="sday">${s.day}</span>
-      <div><div class="sname"><span class="tag ${TAG[s.type]||"t-rest"}">${s.type}</span>${s.name}</div><div class="sdesc">${s.desc}</div>${detailHtml}</div>
+      <div><div class="sname"><span class="tag ${TAG[s.type]||"t-rest"}">${s.type}</span>${s.name}</div><div class="sdesc">${s.desc}</div>${detailHtml}${logHtml}</div>
       ${btns}</div>`;
   }).join("");
 }
@@ -808,8 +918,11 @@ function buildReviewPrompt(weekNum) {
   const best1rm = benchmarks.orm_attempt || benchmarks.orm_w6 || benchmarks.orm_w4 || benchmarks.orm_baseline || "90";
 
   const sessionSummaries = w.sessions.map((s, i) => {
-    const st = sessions[`w${w.num}_d${i}`] || "pending";
-    return `  - ${s.day} (${s.name}): ${st.toUpperCase()}${s.detail ? "\n    Prescribed: " + s.detail.replace(/\n/g, " | ") : ""}`;
+    const key = `w${w.num}_d${i}`;
+    const st = sessions[key] || "pending";
+    const logged = setLogs[key];
+    const setsStr = logged && logged.length ? "\n    Actual sets: " + logged.map(s=>`${s.weight}kg×${s.reps}`).join(", ") : "";
+    return `  - ${s.day} (${s.name}): ${st.toUpperCase()}${s.detail ? "\n    Prescribed: " + s.detail.replace(/\n/g, " | ") : ""}${setsStr}`;
   }).join("\n");
 
   const nextSessionSummaries = nextW ? nextW.sessions.map(s =>
@@ -1023,8 +1136,11 @@ function buildChatSystemPrompt() {
   const best1rm = benchmarks.orm_attempt || benchmarks.orm_w6 || benchmarks.orm_w4 || benchmarks.orm_baseline || "90";
   const daysToAttempt = Math.max(0, Math.ceil((ATTEMPT_DATE - new Date()) / 86400000));
   const sessionStatus = w.sessions.map((s, i) => {
-    const st = sessions[`w${w.num}_d${i}`] || "pending";
-    return `${s.day} — ${s.name}: ${st}`;
+    const key = `w${w.num}_d${i}`;
+    const st = sessions[key] || "pending";
+    const logged = setLogs[key];
+    const setsStr = logged && logged.length ? " | Logged: " + logged.map(s=>`${s.weight}kg×${s.reps}`).join(", ") : "";
+    return `${s.day} — ${s.name}: ${st}${setsStr}`;
   }).join("\n");
 
   const allSessionsContext = WEEKS.map(wk => {
