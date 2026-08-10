@@ -984,7 +984,7 @@ async function generateReview(weekNum, force = false) {
 
   try {
     const prompt = buildReviewPrompt(weekNum);
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
+    const res = await fetch("https://spring-bush-4404.fergusjralexander.workers.dev/", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -1292,7 +1292,7 @@ async function sendChat() {
   showTyping();
 
   try {
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
+    const res = await fetch("https://spring-bush-4404.fergusjralexander.workers.dev/", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
