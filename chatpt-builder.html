@@ -1,0 +1,1009 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ChatPT — Plan Builder</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:    #f2f2f7;
+  --card:  #ffffff;
+  --fill1: rgba(0,0,0,0.05);
+  --fill2: rgba(0,0,0,0.09);
+  --sep:   rgba(0,0,0,0.09);
+  --label: rgba(0,0,0,0.88);
+  --text2: rgba(0,0,0,0.45);
+  --text3: rgba(0,0,0,0.25);
+  --red:    #ff3b30;
+  --blue:   #007aff;
+  --green:  #34c759;
+  --orange: #ff9500;
+}
+
+html { -webkit-font-smoothing: antialiased; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+  background: var(--bg);
+  color: var(--label);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+/* ── Card ─────────────────────────────────────────────────────────────── */
+.card {
+  position: relative;           /* anchor for absolutely-positioned pickers */
+  background: var(--card);
+  border-radius: 20px;
+  padding: 28px 28px 24px;
+  max-width: 600px;
+  width: 100%;
+  box-shadow:
+    0 0 0 0.5px rgba(0,0,0,0.07),
+    0 2px 6px  rgba(0,0,0,0.05),
+    0 8px 24px rgba(0,0,0,0.06);
+}
+
+/* ── Header ───────────────────────────────────────────────────────────── */
+.header { display: flex; align-items: center; gap: 10px; margin-bottom: 22px; }
+.app-icon {
+  width: 32px; height: 32px;
+  background: linear-gradient(145deg, #ff6b35, #ff3b30);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 17px; flex-shrink: 0;
+  box-shadow: 0 1px 4px rgba(255,59,48,0.35);
+}
+.app-name { font-size: 15px; font-weight: 700; letter-spacing: -0.03em; }
+.app-name span { color: var(--red); }
+
+.eyebrow {
+  font-size: 11px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.07em;
+  color: var(--text3); margin-bottom: 10px; padding: 0 2px;
+}
+
+/* ── Sentence wrap ────────────────────────────────────────────────────── */
+.sentence-wrap {
+  background: var(--fill1);
+  border-radius: 14px;
+  padding: 16px 18px 18px;
+}
+.sentence {
+  font-size: clamp(18px, 3vw, 22px);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.75;
+  color: var(--label);
+  user-select: none;
+  cursor: default;
+}
+.chunk { display: none; }
+.chunk.visible { display: inline; }
+
+/* ── Token pills ──────────────────────────────────────────────────────── */
+.token {
+  display: inline-flex;
+  align-items: baseline;
+  padding: 1px 9px 2px;
+  border-radius: 999px;
+  cursor: pointer;
+  position: relative;
+  white-space: nowrap;
+  font-weight: 600;
+  transition: background .12s;
+}
+.token:active { opacity: 0.7; }
+
+.t-red    { background: rgba(255,59,48, 0.10); color: var(--red); }
+.t-blue   { background: rgba(0,122,255, 0.10); color: var(--blue); }
+.t-green  { background: rgba(52,199,89, 0.11); color: var(--green); }
+.t-orange { background: rgba(255,149,0, 0.12); color: var(--orange); }
+
+.token.active.t-red    { background: rgba(255,59,48, 0.18); }
+.token.active.t-blue   { background: rgba(0,122,255, 0.18); }
+.token.active.t-green  { background: rgba(52,199,89, 0.18); }
+.token.active.t-orange { background: rgba(255,149,0, 0.20); }
+.token.active { z-index: 10; }
+
+/* ── Word-stream animation ────────────────────────────────────────────── */
+@keyframes word-in {
+  from { opacity: 0; transform: scale(0.88); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.word-chunk {
+  display: inline-block;
+  animation: word-in 0.3s ease both;
+  transform-origin: left center;
+}
+
+/* Frontier pulse */
+@keyframes pulse-red    { 0%,100%{box-shadow:0 0 0 0 rgba(255,59,48,.4)} 50%{box-shadow:0 0 0 5px rgba(255,59,48,0)} }
+@keyframes pulse-blue   { 0%,100%{box-shadow:0 0 0 0 rgba(0,122,255,.4)} 50%{box-shadow:0 0 0 5px rgba(0,122,255,0)} }
+@keyframes pulse-green  { 0%,100%{box-shadow:0 0 0 0 rgba(52,199,89,.4)} 50%{box-shadow:0 0 0 5px rgba(52,199,89,0)} }
+@keyframes pulse-orange { 0%,100%{box-shadow:0 0 0 0 rgba(255,149,0,.4)} 50%{box-shadow:0 0 0 5px rgba(255,149,0,0)} }
+
+.t-red.frontier    { animation: pulse-red    2s ease-in-out 0.8s infinite; }
+.t-blue.frontier   { animation: pulse-blue   2s ease-in-out 0.8s infinite; }
+.t-green.frontier  { animation: pulse-green  2s ease-in-out 0.8s infinite; }
+.t-orange.frontier { animation: pulse-orange 2s ease-in-out 0.8s infinite; }
+
+/* ── Pickers — live as direct .card children, positioned via JS ───────── */
+.picker {
+  display: none;
+  position: absolute;       /* relative to .card */
+  /* top / left set in openPicker() */
+  transform: translateX(-50%);   /* centre on the token */
+  background: var(--card);
+  border-radius: 16px;
+  padding: 14px;
+  z-index: 200;
+  min-width: 210px;
+  box-shadow:
+    0 0 0 0.5px rgba(0,0,0,0.09),
+    0 4px 16px  rgba(0,0,0,0.10),
+    0 16px 48px rgba(0,0,0,0.12);
+  animation: spring-in .22s cubic-bezier(0.34, 1.5, 0.64, 1) both;
+  font-weight: 400; letter-spacing: normal;
+  color: var(--label); font-size: 14px;
+}
+.picker.open { display: block; }
+
+@keyframes spring-in {
+  from { opacity: 0; transform: translateX(-50%) scale(0.88) translateY(4px); }
+  to   { opacity: 1; transform: translateX(-50%) scale(1)    translateY(0); }
+}
+.picker::before {
+  content: '';
+  position: absolute; top: -5px; left: 50%;
+  width: 10px; height: 10px;
+  background: var(--card);
+  border-left: 0.5px solid rgba(0,0,0,0.08);
+  border-top:  0.5px solid rgba(0,0,0,0.08);
+  transform: translateX(-50%) rotate(45deg);
+}
+
+.picker-label {
+  font-size: 10px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.07em;
+  color: var(--text3); margin-bottom: 9px; padding: 0 2px;
+}
+.picker-skip {
+  margin-top: 10px; padding: 2px;
+  font-size: 12px; font-weight: 500; color: var(--text2);
+  cursor: pointer; text-align: center;
+  border-radius: 8px; transition: background .1s, color .1s;
+}
+.picker-skip:hover { background: var(--fill1); color: var(--label); }
+
+/* ── Chips ────────────────────────────────────────────────────────────── */
+.chip-grid { display: flex; flex-wrap: wrap; gap: 5px; }
+.chip {
+  font-size: 13px; font-weight: 500;
+  padding: 5px 13px; border-radius: 999px;
+  background: var(--fill1); color: var(--label);
+  cursor: pointer; transition: background .1s;
+  border: none; font-family: inherit; white-space: nowrap;
+}
+.chip:hover { background: var(--fill2); }
+.chip.sel-red    { background: var(--red);    color: #fff; }
+.chip.sel-blue   { background: var(--blue);   color: #fff; }
+.chip.sel-green  { background: var(--green);  color: #fff; }
+.chip.sel-orange { background: var(--orange); color: #fff; }
+
+/* ── Number input ─────────────────────────────────────────────────────── */
+.num-row {
+  display: flex; align-items: center;
+  background: var(--fill1); border-radius: 12px;
+  padding: 5px 6px 5px 14px; gap: 6px;
+}
+.num-row input {
+  font-size: 22px; font-weight: 700; letter-spacing: -0.03em;
+  border: none; background: transparent; color: var(--label);
+  width: 72px; outline: none; font-family: inherit;
+  -moz-appearance: textfield; appearance: textfield;
+}
+.num-row input::-webkit-outer-spin-button,
+.num-row input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.num-unit { font-size: 13px; color: var(--text2); flex: 1; }
+.num-btns { display: flex; flex-direction: column; gap: 3px; }
+.num-btn {
+  width: 26px; height: 26px; border-radius: 8px;
+  border: none; background: rgba(0,0,0,0.08);
+  font-size: 15px; cursor: pointer; font-family: inherit;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--label); transition: background .1s;
+}
+.num-btn:hover { background: rgba(0,0,0,0.14); }
+.num-confirm {
+  width: 26px; height: 26px; border-radius: 8px;
+  border: none; background: var(--blue); color: #fff;
+  font-size: 13px; font-weight: 700; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: opacity .1s;
+}
+.num-confirm:hover { opacity: 0.85; }
+
+.pace-inputs { display: flex; align-items: baseline; gap: 1px; }
+.pace-input {
+  font-size: 22px; font-weight: 700; letter-spacing: -0.03em;
+  border: none; background: transparent; color: var(--label);
+  width: 36px; outline: none; font-family: inherit; text-align: right;
+  -moz-appearance: textfield; appearance: textfield;
+}
+.pace-input::-webkit-outer-spin-button,
+.pace-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.pace-sep { font-size: 22px; font-weight: 700; color: var(--label); padding: 0 1px; }
+
+/* ── Stepper ──────────────────────────────────────────────────────────── */
+.stepper {
+  display: flex; align-items: center; justify-content: space-between;
+  background: var(--fill1); border-radius: 12px;
+  padding: 10px 8px 10px 14px;
+}
+.step-left .step-val { font-size: 28px; font-weight: 700; letter-spacing: -0.04em; line-height: 1; }
+.step-left .step-lbl { font-size: 11px; color: var(--text2); margin-top: 3px; }
+.step-btns { display: flex; gap: 6px; }
+.step-btn {
+  width: 34px; height: 34px; border-radius: 999px;
+  border: none; background: rgba(0,0,0,0.08);
+  font-size: 19px; cursor: pointer; font-family: inherit;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--label); transition: background .1s; font-weight: 300;
+}
+.step-btn:hover { background: rgba(0,0,0,0.13); }
+.step-btn:disabled { opacity: 0.28; cursor: default; }
+.step-check {
+  width: 34px; height: 34px; border-radius: 999px;
+  border: none; background: var(--blue); color: #fff;
+  font-size: 15px; font-weight: 700; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: opacity .1s; flex-shrink: 0;
+}
+.step-check:hover { opacity: 0.85; }
+
+/* ── Date ─────────────────────────────────────────────────────────────── */
+.date-input {
+  width: 100%; font-size: 14px; font-weight: 500;
+  font-family: inherit; outline: none;
+  border: none; border-radius: 10px;
+  padding: 10px 12px;
+  background: var(--fill1); color: var(--label); cursor: pointer;
+}
+.date-confirm-row { display: flex; justify-content: flex-end; margin-top: 8px; }
+
+/* ── Warning banner ──────────────────────────────────────────────────────── */
+.warning-banner {
+  display: none;
+  font-size: 12px; line-height: 1.45;
+  color: var(--orange);
+  margin-top: 10px;
+  padding: 8px 12px;
+  background: rgba(255,149,0,0.08);
+  border-radius: 10px;
+}
+.warning-banner.visible { display: block; }
+
+/* ── Bottom section ───────────────────────────────────────────────────── */
+.bottom {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition:
+    grid-template-rows 0.45s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity            0.35s ease 0.15s;
+}
+.bottom.visible { grid-template-rows: 1fr; opacity: 1; }
+.bottom-inner { overflow: hidden; }
+
+.sep { border: none; border-top: 0.5px solid var(--sep); margin: 18px 0; }
+
+/* ── CTA ──────────────────────────────────────────────────────────────── */
+.cta-row { display: flex; align-items: center; gap: 10px; }
+.btn-primary {
+  flex: 1; padding: 14px 20px; border: none; border-radius: 999px;
+  background: var(--blue); color: #fff;
+  font-size: 15px; font-weight: 600; font-family: inherit;
+  letter-spacing: -0.01em; cursor: pointer;
+  transition: opacity .15s, transform .15s;
+}
+.btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+.btn-primary:disabled { background: var(--fill2); color: var(--text3); transform: none; cursor: default; opacity: 1; }
+.btn-icon {
+  width: 46px; height: 46px; border: none; border-radius: 999px;
+  background: var(--fill1); font-size: 17px; cursor: pointer;
+  font-family: inherit; color: var(--text2);
+  display: flex; align-items: center; justify-content: center;
+  transition: background .15s; flex-shrink: 0;
+}
+.btn-icon:hover { background: var(--fill2); }
+
+/* ── Race search ──────────────────────────────────────────────────────── */
+#pick-race { min-width: 270px; }
+.race-input {
+  width: 100%; font-size: 14px; font-weight: 500;
+  font-family: inherit; outline: none;
+  border: none; border-radius: 10px;
+  padding: 9px 12px;
+  background: var(--fill1); color: var(--label);
+}
+.race-input::placeholder { color: var(--text3); font-weight: 400; }
+.race-results { display: flex; flex-direction: column; gap: 1px; margin-top: 6px; }
+.race-result {
+  padding: 7px 10px; border-radius: 9px;
+  cursor: pointer; transition: background .1s;
+}
+.race-result:hover { background: var(--fill1); }
+.race-result-name { font-size: 13px; font-weight: 600; color: var(--label); }
+.race-result-meta { font-size: 11px; color: var(--text2); margin-top: 1px; }
+.race-no-results { font-size: 12px; color: var(--text3); text-align: center; padding: 10px 0 4px; }
+#pick-race .picker-skip {
+  border-top: 0.5px solid var(--sep);
+  margin-top: 6px; padding-top: 8px;
+}
+
+@media (max-width:520px) {
+  .card { padding:22px 18px 20px; border-radius:16px; }
+  .sentence-line { font-size:18px; }
+}
+</style>
+</head>
+<body>
+
+<div class="card">
+
+  <header class="header">
+    <div class="app-icon">⚡</div>
+    <div class="app-name">Chat<span>PT</span></div>
+  </header>
+
+  <div class="eyebrow">Build your plan</div>
+
+  <!-- ── Sentence — single flowing line, chunks reveal inline ─────────── -->
+  <div class="sentence-wrap">
+    <div class="sentence"><span class="chunk visible" id="chunk-sport">Build me a <span class="token t-red frontier" id="tok-sport" onclick="openPicker('sport')"><span class="tok-text">strength</span></span> block</span><span class="chunk" id="chunk-exercise"> to hit <span class="token t-red" id="tok-exercise" onclick="openPicker('exercise')"><span class="tok-text">100kg bench</span></span></span><span class="chunk" id="chunk-baseline"> from <span class="token t-blue" id="tok-baseline" onclick="openPicker('baseline')"><span class="tok-text">90 kg</span></span></span><span class="chunk" id="chunk-weeks"> over <span class="token t-green" id="tok-weeks" onclick="openPicker('weeks')"><span class="tok-text">8 weeks</span></span></span><span class="chunk" id="chunk-days"> training <span class="token t-green" id="tok-days" onclick="openPicker('days')"><span class="tok-text">3 days</span></span><span id="week-suffix"> a week</span></span><span class="chunk" id="chunk-race"> at <span class="token t-orange" id="tok-race" onclick="openPicker('race')"><span class="tok-text">your A race</span></span></span><span class="chunk" id="chunk-date"><span id="date-line-start"> attempting on </span><span class="token t-orange" id="tok-date" onclick="openPicker('date')"><span class="tok-text">19 Sep</span></span>.</span></div>
+  </div><!-- /.sentence-wrap -->
+
+  <div id="warning-banner" class="warning-banner"></div>
+
+  <!-- ── Pickers — direct .card children, positioned via JS ─────────── -->
+  <div class="picker" id="pick-sport" onclick="event.stopPropagation()">
+    <div class="picker-label">Sport</div>
+    <div class="chip-grid">
+      <div class="chip sel-red" data-key="strength" onclick="setSport('strength','strength')">🏋️ Strength</div>
+      <div class="chip" data-key="running"  onclick="setSport('running','running')">🏃 Running</div>
+      <div class="chip" data-key="swim"     onclick="setSport('swim','swimming')">🏊 Swimming</div>
+      <div class="chip" data-key="cycle"    onclick="setSport('cycle','cycling')">🚴 Cycling</div>
+      <div class="chip" data-key="tri"      onclick="setSport('tri','triathlon')">🏊‍♂️ Triathlon</div>
+      <div class="chip" data-key="hyrox"   onclick="setSport('hyrox','Hyrox')">🏅 Hyrox</div>
+      <div class="chip" data-key="custom"   onclick="setSport('custom','custom')">⚡ Custom</div>
+    </div>
+  </div>
+
+  <div class="picker" id="pick-exercise" onclick="event.stopPropagation()">
+    <div class="picker-label" id="exercise-picker-label">Goal lift</div>
+    <div class="chip-grid" id="exercise-chips"></div>
+  </div>
+
+  <div class="picker" id="pick-baseline" onclick="event.stopPropagation()">
+    <div class="picker-label" id="baseline-picker-label">Current max</div>
+    <div class="num-row" id="baseline-num-row">
+      <input type="number" id="baseline-input" value="90" min="1" max="999"
+        oninput="setBaseline(this.value)"
+        onkeydown="if(event.key==='Enter') closePicker('baseline')">
+      <span class="num-unit" id="baseline-unit">kg</span>
+      <div class="num-btns">
+        <button class="num-btn" onclick="nudge(1)">+</button>
+        <button class="num-btn" onclick="nudge(-1)">−</button>
+        <button class="num-confirm" onclick="closePicker('baseline')">✓</button>
+      </div>
+    </div>
+    <div class="num-row" id="pace-row" style="display:none">
+      <div class="pace-inputs">
+        <input class="pace-input" type="number" id="pace-min" value="1" min="0" max="9"
+          oninput="setPace()" onkeydown="if(event.key==='Enter') closePicker('baseline')">
+        <span class="pace-sep">:</span>
+        <input class="pace-input" type="number" id="pace-sec" value="48" min="0" max="59"
+          oninput="setPace()" onkeydown="if(event.key==='Enter') closePicker('baseline')">
+      </div>
+      <span class="num-unit">/100m</span>
+      <div class="num-btns">
+        <button class="num-btn" onclick="nudge(1)">+</button>
+        <button class="num-btn" onclick="nudge(-1)">−</button>
+        <button class="num-confirm" onclick="closePicker('baseline')">✓</button>
+      </div>
+    </div>
+    <div class="picker-skip" onclick="skipBaseline()">I don't have one yet →</div>
+  </div>
+
+  <div class="picker" id="pick-weeks" onclick="event.stopPropagation()">
+    <div class="picker-label">Block length</div>
+    <div class="stepper">
+      <div class="step-left">
+        <div class="step-val" id="weeks-val">8</div>
+        <div class="step-lbl">weeks</div>
+      </div>
+      <div class="step-btns">
+        <button class="step-btn" onclick="stepWeeks(1)">+</button>
+        <button class="step-btn" id="weeks-minus" onclick="stepWeeks(-1)">−</button>
+        <button class="step-check" onclick="closePicker('weeks')">✓</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="picker" id="pick-days" onclick="event.stopPropagation()">
+    <div class="picker-label" id="vol-picker-label">Training days per week</div>
+    <div class="stepper">
+      <div class="step-left">
+        <div class="step-val" id="vol-val">3</div>
+        <div class="step-lbl" id="vol-lbl">days / week</div>
+      </div>
+      <div class="step-btns">
+        <button class="step-btn" id="vol-plus"  onclick="stepVolume(1)">+</button>
+        <button class="step-btn" id="vol-minus" onclick="stepVolume(-1)">−</button>
+        <button class="step-check" onclick="closePicker('days')">✓</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="picker" id="pick-race" onclick="event.stopPropagation()">
+    <div class="picker-label">Race / Event</div>
+    <input class="race-input" type="text" id="race-input" placeholder="Search events…"
+      oninput="setRace(this.value)"
+      onkeydown="if(event.key==='Enter' && state.race) closePicker('race')">
+    <div class="race-results" id="race-results"></div>
+    <div class="picker-skip" onclick="skipRace()">No specific race yet →</div>
+  </div>
+
+  <div class="picker" id="pick-date" onclick="event.stopPropagation()">
+    <div class="picker-label">Attempt date</div>
+    <input class="date-input" type="date" id="date-input" onchange="setDate(this.value)">
+    <div class="date-confirm-row">
+      <button class="step-check" onclick="closePicker('date')">✓</button>
+    </div>
+  </div>
+
+  <!-- ── Bottom: summary + CTA, revealed after all lines confirmed ───── -->
+  <div class="bottom" id="bottom">
+    <div class="bottom-inner">
+      <hr class="sep">
+      <div class="cta-row">
+        <button class="btn-primary" id="gen-btn" onclick="generate()">Build my plan →</button>
+        <button class="btn-icon" onclick="resetAll()" title="Start over">↺</button>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /.card -->
+
+<script>
+// ── Sport config — drives sentence shape per sport ─────────────────────────
+const SPORT_CONFIG = {
+  strength: { volType:'days',  volDefault:3, volMin:2, volMax:6,  volStep:1, weeksDefault:8,  weeksMin:4,  nudgeStep:2.5,  endVerb:'attempting', goalLabel:'Goal lift',        hasRace:false },
+  running:  { volType:'days',  volDefault:4, volMin:2, volMax:7,  volStep:1, weeksDefault:10, weeksMin:6,  nudgeStep:1,    endVerb:'racing',     goalLabel:'Goal event',       hasRace:true  },
+  swim:     { volType:'days',  volDefault:3, volMin:2, volMax:6,  volStep:1, weeksDefault:8,  weeksMin:4,  nudgeStep:0.05, endVerb:'racing',     goalLabel:'Goal event',       hasRace:true  },
+  cycle:    { volType:'days',  volDefault:4, volMin:2, volMax:6,  volStep:1, weeksDefault:8,  weeksMin:4,  nudgeStep:5,    endVerb:'testing',    goalLabel:'Goal FTP / event', hasRace:true  },
+  tri:      { volType:'hours', volDefault:8, volMin:5, volMax:20, volStep:1, weeksDefault:16, weeksMin:12, nudgeStep:0.25, endVerb:'racing',     goalLabel:'Goal event',       hasRace:true  },
+  hyrox:    { volType:'days',  volDefault:4, volMin:2, volMax:7,  volStep:1, weeksDefault:8,  weeksMin:6,  nudgeStep:1,    endVerb:'racing',     goalLabel:'Goal time',        hasRace:true  },
+  custom:   { volType:'days',  volDefault:3, volMin:2, volMax:6,  volStep:1, weeksDefault:8,  weeksMin:4,  nudgeStep:1,    endVerb:'attempting', goalLabel:'Goal',             hasRace:true  },
+};
+
+// ── State ──────────────────────────────────────────────────────────────────
+const state = {
+  sport: 'strength', exercise: '100kg bench',
+  baseline: 90, baseUnit: 'kg',
+  weeks: 8,
+  volume: 3, volType: 'days',
+  race: null, raceSkipped: false,
+  date: '2026-09-19',
+};
+
+const EXERCISES = {
+  strength: [
+    {label:'100kg bench',     unit:'kg',  goalVal:100, baseline:90},
+    {label:'120kg bench',     unit:'kg',  goalVal:120, baseline:110},
+    {label:'140kg squat',     unit:'kg',  goalVal:140, baseline:120},
+    {label:'180kg deadlift',  unit:'kg',  goalVal:180, baseline:160},
+    {label:'60kg OHP',        unit:'kg',  goalVal:60,  baseline:50},
+  ],
+  running: [
+    {label:'sub-25min 5k',      unit:'min', goalVal:25,  baseline:28},
+    {label:'sub-50min 10k',     unit:'min', goalVal:50,  baseline:56},
+    {label:'sub-1:50 half',     unit:'min', goalVal:110, baseline:125},
+    {label:'sub-3:30 marathon', unit:'min', goalVal:210, baseline:240},
+  ],
+  // swim baseline stored as pace (decimal min/100m); nudge step 0.05 = 3 sec
+  swim: [
+    {label:'sub-22min 1500m',  unit:'pace', goalVal:null, baseline:1.80},
+    {label:'sub-30min 1km',    unit:'pace', goalVal:null, baseline:3.60},
+    {label:'sub-60min 2km',    unit:'pace', goalVal:null, baseline:3.50},
+    {label:'sub-30min 1km OW', unit:'pace', goalVal:null, baseline:3.75},
+  ],
+  cycle: [
+    {label:'250W FTP',       unit:'W',   goalVal:250, baseline:220},
+    {label:'280W FTP',       unit:'W',   goalVal:280, baseline:250},
+    {label:'300W FTP',       unit:'W',   goalVal:300, baseline:265},
+    {label:'sub-1hr 40k TT', unit:'min', goalVal:60,  baseline:68},
+  ],
+  // tri baseline stored as decimal hours; nudge step 0.25 = 15 min
+  tri: [
+    {label:'70.3 sub-5:30',  unit:'hrs', goalVal:null, baseline:6.25},
+    {label:'70.3 sub-5:00',  unit:'hrs', goalVal:null, baseline:5.75},
+    {label:'Full sub-11hrs', unit:'hrs', goalVal:null, baseline:12.50},
+    {label:'Full sub-10hrs', unit:'hrs', goalVal:null, baseline:11.00},
+  ],
+  hyrox: [
+    {label:'sub-45min finish', unit:'min', goalVal:45,  baseline:55},
+    {label:'sub-1:00 finish',  unit:'min', goalVal:60,  baseline:75},
+    {label:'sub-1:15 finish',  unit:'min', goalVal:75,  baseline:90},
+    {label:'sub-1:30 finish',  unit:'min', goalVal:90,  baseline:100},
+  ],
+  custom: [{label:'my goal', unit:'', goalVal:null, baseline:80}],
+};
+
+// ── Baseline display ────────────────────────────────────────────────────────
+function fmtBaseline(value, unit) {
+  if (value === null || value === undefined) return 'scratch';
+  if (unit === 'pace') {
+    const mins = Math.floor(value);
+    const secs = Math.round((value - mins) * 60);
+    return `${mins}:${String(secs).padStart(2,'0')}/100m`;
+  }
+  if (unit === 'hrs') {
+    const h = Math.floor(value);
+    const m = Math.round((value - h) * 60);
+    return m > 0 ? `~${h}h${String(m).padStart(2,'0')}m` : `~${h}h`;
+  }
+  return value + (unit ? ' ' + unit : '');
+}
+
+// ── Progressive flow ───────────────────────────────────────────────────────
+let frontier = 0;
+
+function getOrder() {
+  return SPORT_CONFIG[state.sport]?.hasRace
+    ? ['sport','exercise','baseline','weeks','days','race','date']
+    : ['sport','exercise','baseline','weeks','days','date'];
+}
+
+function advance() {
+  frontier++;
+  const order = getOrder();
+  if (frontier < order.length) {
+    const stepId = order[frontier];
+    const chunk = document.getElementById('chunk-' + stepId);
+    wrapWords(chunk);
+    chunk.classList.add('visible');
+    updateFrontier();
+    if (stepId === 'race') {
+      document.getElementById('date-line-start').textContent = ' on ';
+    }
+    setTimeout(() => openPicker(stepId), 450);
+  } else {
+    updateFrontier();
+    document.getElementById('bottom').classList.add('visible');
+  }
+}
+
+function updateFrontier() {
+  const order = getOrder();
+  order.forEach(id => document.getElementById('tok-' + id)?.classList.remove('frontier'));
+  if (frontier < order.length) {
+    document.getElementById('tok-' + order[frontier])?.classList.add('frontier');
+  }
+}
+
+// ── Word-stream: wraps text + element nodes in staggered .word-chunk spans ─
+function wrapWords(lineEl, baseDelay = 80) {
+  if (lineEl.querySelector('.word-chunk')) return;
+  const STEP = 80;
+  let i = 0;
+  const nodes = Array.from(lineEl.childNodes);
+  lineEl.innerHTML = '';
+  nodes.forEach(node => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      node.textContent.split(/(\s+)/).forEach(part => {
+        if (!part) return;
+        if (/^\s+$/.test(part)) {
+          lineEl.appendChild(document.createTextNode(part));
+        } else {
+          const s = document.createElement('span');
+          s.className = 'word-chunk';
+          s.style.animationDelay = (baseDelay + i++ * STEP) + 'ms';
+          s.textContent = part;
+          lineEl.appendChild(s);
+        }
+      });
+    } else {
+      const w = document.createElement('span');
+      w.className = 'word-chunk';
+      w.style.animationDelay = (baseDelay + i++ * STEP) + 'ms';
+      w.appendChild(node);
+      lineEl.appendChild(w);
+    }
+  });
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+function setText(id, val) {
+  document.getElementById(id).querySelector('.tok-text').textContent = val;
+}
+
+// ── Pickers — positioned relative to .card using getBoundingClientRect ─────
+let openId = null;
+
+function openPicker(id) {
+  const token  = document.getElementById('tok-' + id);
+  const picker = document.getElementById('pick-' + id);
+  const card   = document.querySelector('.card');
+
+  if (openId && openId !== id) closePicker(openId, true);
+  if (picker.classList.contains('open')) { closePicker(id); return; }
+
+  const tr = token.getBoundingClientRect();
+  const cr = card.getBoundingClientRect();
+  picker.style.top  = (tr.bottom - cr.top + 9) + 'px';
+  picker.style.left = (tr.left - cr.left + tr.width / 2) + 'px';
+
+  picker.classList.add('open');
+  token.classList.add('active');
+  openId = id;
+  if (id === 'date') document.getElementById('date-input').value = state.date;
+  if (id === 'race') setTimeout(() => {
+    document.getElementById('race-input').focus();
+    renderRaceResults(document.getElementById('race-input').value);
+  }, 60);
+}
+
+function closePicker(id, skipAdvance = false) {
+  document.getElementById('pick-' + id)?.classList.remove('open');
+  document.getElementById('tok-' + id)?.classList.remove('active');
+  if (openId === id) openId = null;
+  if (!skipAdvance && getOrder()[frontier] === id) advance();
+}
+
+document.addEventListener('click', e => {
+  if (openId && !e.target.closest('.token') && !e.target.closest('.picker')) {
+    closePicker(openId);
+  }
+});
+
+// ── Sport ──────────────────────────────────────────────────────────────────
+function setSport(key, label) {
+  state.sport = key;
+  const cfg = SPORT_CONFIG[key];
+
+  setText('tok-sport', label);
+  document.querySelectorAll('#pick-sport .chip').forEach(c =>
+    c.classList.toggle('sel-red', c.dataset.key === key)
+  );
+
+  // Baseline picker — toggle num vs pace row, update label
+  const firstEx = EXERCISES[key]?.[0];
+  const isPace = firstEx?.unit === 'pace';
+  document.getElementById('baseline-num-row').style.display = isPace ? 'none' : '';
+  document.getElementById('pace-row').style.display         = isPace ? '' : 'none';
+  document.getElementById('baseline-picker-label').textContent =
+    isPace ? 'Current pace' : (cfg.volType === 'hours' ? 'Current time' : 'Current max');
+
+  // Goal picker label
+  document.getElementById('exercise-picker-label').textContent = cfg.goalLabel;
+
+  // Volume picker — update label, stepper, default
+  state.volume  = cfg.volDefault;
+  state.volType = cfg.volType;
+  const isHours = cfg.volType === 'hours';
+  document.getElementById('vol-picker-label').textContent = isHours ? 'Training hours per week' : 'Training days per week';
+  document.getElementById('vol-lbl').textContent          = isHours ? 'hrs / week'  : 'days / week';
+  document.getElementById('vol-val').textContent          = state.volume;
+  document.getElementById('vol-minus').disabled           = state.volume <= cfg.volMin;
+  document.getElementById('vol-plus').disabled            = state.volume >= cfg.volMax;
+  setText('tok-days', state.volume + (isHours ? ' hrs' : ' days'));
+  document.getElementById('week-suffix').style.display    = isHours ? 'none' : '';
+
+  // Weeks — reset to sport default, enforce sport minimum
+  state.weeks = cfg.weeksDefault;
+  document.getElementById('weeks-val').textContent = state.weeks;
+  document.getElementById('weeks-minus').disabled  = state.weeks <= cfg.weeksMin;
+  setText('tok-weeks', state.weeks + ' weeks');
+
+  // End verb (reset race state when sport changes)
+  state.race = null; state.raceSkipped = false;
+  document.getElementById('date-line-start').textContent = ' ' + cfg.endVerb + ' on ';
+  document.getElementById('race-input').value = '';
+  setText('tok-race', 'your A race');
+  document.getElementById('chunk-race').classList.remove('visible');
+
+  // Rebuild exercise options and apply first
+  buildExerciseChips();
+  const first = EXERCISES[key]?.[0];
+  if (first) applyExercise(first, false);
+
+  closePicker('sport');
+}
+
+function buildExerciseChips() {
+  document.getElementById('exercise-chips').innerHTML =
+    (EXERCISES[state.sport] || []).map(ex =>
+      `<div class="chip${ex.label === state.exercise ? ' sel-red' : ''}"
+        onclick='applyExercise(${JSON.stringify(ex)}, true)'>${ex.label}</div>`
+    ).join('');
+}
+
+function applyExercise(ex, closeAfter) {
+  state.exercise = ex.label;
+  state.baseline = ex.baseline;
+  state.baseUnit = ex.unit;
+  setText('tok-exercise', ex.label);
+  setText('tok-baseline', fmtBaseline(ex.baseline, ex.unit));
+  if (ex.unit === 'pace') {
+    updatePaceInputs(ex.baseline);
+  } else {
+    document.getElementById('baseline-input').value = ex.baseline;
+    document.getElementById('baseline-unit').textContent = ex.unit || '';
+  }
+  buildExerciseChips();
+  checkWarning();
+  if (closeAfter) closePicker('exercise');
+}
+
+// ── Baseline ───────────────────────────────────────────────────────────────
+function setBaseline(val) {
+  state.baseline = parseFloat(val) || 0;
+  state.baselineSkipped = false;
+  setText('tok-baseline', fmtBaseline(state.baseline, state.baseUnit));
+  checkWarning();
+}
+function nudge(delta) {
+  const step = SPORT_CONFIG[state.sport].nudgeStep;
+  state.baseline = Math.round(Math.max(step, state.baseline + delta * step) * 100) / 100;
+  if (state.baseUnit === 'pace') {
+    updatePaceInputs(state.baseline);
+  } else {
+    document.getElementById('baseline-input').value = state.baseline;
+  }
+  setBaseline(state.baseline);
+}
+
+function updatePaceInputs(decimal) {
+  const m = Math.floor(decimal);
+  const s = Math.round((decimal - m) * 60);
+  document.getElementById('pace-min').value = m;
+  document.getElementById('pace-sec').value = String(s).padStart(2, '0');
+}
+
+function setPace() {
+  const m = parseInt(document.getElementById('pace-min').value) || 0;
+  let s   = parseInt(document.getElementById('pace-sec').value) || 0;
+  s = Math.min(59, Math.max(0, s));
+  setBaseline(m + s / 60);
+}
+function skipBaseline() {
+  state.baselineSkipped = true;
+  state.baseline = null;
+  setText('tok-baseline', 'scratch');
+  closePicker('baseline');
+}
+
+// ── Event database (approx. 2026 dates — verify on official site) ──────────
+const EVENTS = {
+  running: [
+    { name:'London Marathon',        loc:'London, UK',         date:'2026-04-26' },
+    { name:'Boston Marathon',        loc:'Boston, USA',        date:'2026-04-20' },
+    { name:'Tokyo Marathon',         loc:'Tokyo, Japan',       date:'2026-03-01' },
+    { name:'Berlin Marathon',        loc:'Berlin, Germany',    date:'2026-09-27' },
+    { name:'Chicago Marathon',       loc:'Chicago, USA',       date:'2026-10-11' },
+    { name:'New York Marathon',      loc:'New York, USA',      date:'2026-11-01' },
+    { name:'Paris Marathon',         loc:'Paris, France',      date:'2026-04-05' },
+    { name:'Amsterdam Marathon',     loc:'Amsterdam, NL',      date:'2026-10-18' },
+    { name:'Edinburgh Marathon',     loc:'Edinburgh, UK',      date:'2026-05-24' },
+    { name:'Manchester Marathon',    loc:'Manchester, UK',     date:'2026-04-05' },
+    { name:'Brighton Marathon',      loc:'Brighton, UK',       date:'2026-04-12' },
+    { name:'Great North Run',        loc:'Newcastle, UK',      date:'2026-09-13' },
+    { name:'Great South Run',        loc:'Portsmouth, UK',     date:'2026-10-18' },
+    { name:'Royal Parks Half',       loc:'London, UK',         date:'2026-10-11' },
+    { name:'Bath Half Marathon',     loc:'Bath, UK',           date:'2026-03-08' },
+  ],
+  tri: [
+    { name:'Ironman UK',             loc:'Bolton, UK',         date:'2026-07-12' },
+    { name:'Ironman Barcelona',      loc:'Barcelona, Spain',   date:'2026-10-04' },
+    { name:'Ironman Frankfurt',      loc:'Frankfurt, Germany',  date:'2026-06-28' },
+    { name:'Ironman Lanzarote',      loc:'Lanzarote, Spain',   date:'2026-05-23' },
+    { name:'Ironman Zurich',         loc:'Zurich, Switzerland',date:'2026-07-05' },
+    { name:'Ironman 70.3 Edinburgh', loc:'Edinburgh, UK',      date:'2026-06-07' },
+    { name:'Ironman 70.3 Staffordshire', loc:'Stafford, UK',  date:'2026-06-14' },
+    { name:'Ironman 70.3 Weymouth', loc:'Weymouth, UK',        date:'2026-09-20' },
+    { name:'Challenge Roth',         loc:'Roth, Germany',      date:'2026-07-05' },
+    { name:'Outlaw Full',            loc:'Nottingham, UK',     date:'2026-07-12' },
+  ],
+  swim: [
+    { name:'Great North Swim',       loc:'Windermere, UK',     date:'2026-06-06' },
+    { name:'Dart 10k',               loc:'Dartmouth, UK',      date:'2026-09-19' },
+    { name:'Henley Classic',         loc:'Henley, UK',         date:'2026-07-04' },
+    { name:'Blenheim Palace Swim',   loc:'Woodstock, UK',      date:'2026-06-14' },
+    { name:'Loch Lomond Swim',       loc:'Loch Lomond, UK',    date:'2026-07-18' },
+    { name:'Jersey OW Swimming',     loc:'Jersey, UK',         date:'2026-08-01' },
+  ],
+  cycle: [
+    { name:'RideLondon-Essex 100',   loc:'London, UK',         date:'2026-05-31' },
+    { name:'Marmotte Granfondo',     loc:'Bourg d\'Oisans, FR',date:'2026-07-04' },
+    { name:'Maratona dles Dolomites',loc:'Corvara, Italy',     date:'2026-07-05' },
+    { name:'Dragon Ride',            loc:'Wales, UK',          date:'2026-06-07' },
+    { name:'Fred Whitton Challenge', loc:'Lake District, UK',  date:'2026-05-10' },
+    { name:'London to Brighton',     loc:'London–Brighton, UK',date:'2026-06-14' },
+    { name:'Étape du Tour',          loc:'France',             date:'2026-07-12' },
+    { name:'Tour de Yorkshire Sportive', loc:'Yorkshire, UK',  date:'2026-05-03' },
+  ],
+  hyrox: [
+    { name:'Hyrox London',           loc:'London, UK',         date:'2026-03-14' },
+    { name:'Hyrox Manchester',       loc:'Manchester, UK',     date:'2026-11-07' },
+    { name:'Hyrox Birmingham',       loc:'Birmingham, UK',     date:'2026-04-18' },
+    { name:'Hyrox Berlin',           loc:'Berlin, Germany',    date:'2026-05-02' },
+    { name:'Hyrox Munich',           loc:'Munich, Germany',    date:'2026-03-21' },
+    { name:'Hyrox Hamburg',          loc:'Hamburg, Germany',   date:'2026-10-17' },
+    { name:'Hyrox Amsterdam',        loc:'Amsterdam, NL',      date:'2026-09-26' },
+    { name:'Hyrox Paris',            loc:'Paris, France',      date:'2026-11-14' },
+    { name:'Hyrox New York',         loc:'New York, USA',      date:'2026-04-25' },
+    { name:'Hyrox Chicago',          loc:'Chicago, USA',       date:'2026-10-03' },
+  ],
+  custom: [
+    { name:'National Three Peaks',   loc:'UK',                 date:'2026-06-20' },
+    { name:'Welsh Three Peaks',      loc:'Wales, UK',          date:'2026-07-18' },
+    { name:'Bob Graham Round',       loc:'Lake District, UK',  date:'2026-06-27' },
+    { name:'Tough Mudder',           loc:'Various, UK',        date:'2026-04-18' },
+    { name:'Spartan Race',           loc:'Various, UK',        date:'2026-06-13' },
+  ],
+};
+
+let _evtMatches = [];
+
+function filterEvents(query) {
+  const pool = EVENTS[state.sport] || [];
+  if (!query.trim()) return pool.slice(0, 6);
+  const q = query.toLowerCase();
+  return pool.filter(e =>
+    e.name.toLowerCase().includes(q) || e.loc.toLowerCase().includes(q)
+  ).slice(0, 6);
+}
+
+function renderRaceResults(query) {
+  _evtMatches = filterEvents(query);
+  const container = document.getElementById('race-results');
+  if (!_evtMatches.length) {
+    container.innerHTML = '<div class="race-no-results">No matches — press Enter to use as written</div>';
+    return;
+  }
+  container.innerHTML = _evtMatches.map((ev, i) => {
+    const d = new Date(ev.date + 'T12:00:00');
+    const ds = d.toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' });
+    return `<div class="race-result" onclick="selectEvent(${i})">
+      <div class="race-result-name">${ev.name}</div>
+      <div class="race-result-meta">${ev.loc} &middot; ${ds}</div>
+    </div>`;
+  }).join('');
+}
+
+function selectEvent(i) {
+  const ev = _evtMatches[i];
+  state.race = ev.name;
+  setText('tok-race', ev.name);
+  document.getElementById('race-input').value = ev.name;
+  // Pre-populate date
+  state.date = ev.date;
+  const d = new Date(ev.date + 'T12:00:00');
+  setText('tok-date', d.toLocaleDateString('en-GB', { day:'numeric', month:'short' }));
+  closePicker('race');
+}
+
+// ── Race ───────────────────────────────────────────────────────────────────
+function setRace(val) {
+  state.race = val.trim();
+  state.raceSkipped = false;
+  setText('tok-race', state.race || 'your A race');
+  renderRaceResults(val);
+}
+
+function skipRace() {
+  state.raceSkipped = true;
+  state.race = null;
+  document.getElementById('chunk-race').classList.remove('visible');
+  document.getElementById('date-line-start').textContent =
+    ' ' + SPORT_CONFIG[state.sport].endVerb + ' on ';
+  closePicker('race');
+}
+
+// ── Weeks ──────────────────────────────────────────────────────────────────
+function stepWeeks(d) {
+  const min = SPORT_CONFIG[state.sport].weeksMin;
+  state.weeks = Math.min(52, Math.max(min, state.weeks + d));
+  document.getElementById('weeks-val').textContent = state.weeks;
+  document.getElementById('weeks-minus').disabled = state.weeks <= min;
+  setText('tok-weeks', state.weeks + ' weeks');
+  checkWarning();
+}
+
+// ── Volume (days or hours depending on sport) ──────────────────────────────
+function stepVolume(d) {
+  const cfg = SPORT_CONFIG[state.sport];
+  state.volume = Math.min(cfg.volMax, Math.max(cfg.volMin, state.volume + d));
+  document.getElementById('vol-val').textContent  = state.volume;
+  document.getElementById('vol-minus').disabled   = state.volume <= cfg.volMin;
+  document.getElementById('vol-plus').disabled    = state.volume >= cfg.volMax;
+  setText('tok-days', state.volume + (state.volType === 'hours' ? ' hrs' : ' days'));
+}
+
+// ── Date ───────────────────────────────────────────────────────────────────
+function setDate(val) {
+  state.date = val;
+  const d = new Date(val + 'T12:00:00');
+  setText('tok-date', d.toLocaleDateString('en-GB', {day:'numeric', month:'short'}));
+}
+
+// ── Realism warnings ───────────────────────────────────────────────────────
+function getWarning() {
+  if (state.baseline === null || state.baselineSkipped) return null;
+  const { sport, baseline, weeks } = state;
+  const ex = EXERCISES[sport]?.find(e => e.label === state.exercise);
+  if (!ex) return null;
+
+  if (sport === 'strength' && ex.goalVal != null) {
+    const gain = ex.goalVal - baseline;
+    if (gain > 0 && gain / weeks > 1.5)
+      return `${(gain / weeks).toFixed(1)} kg/week gain is ambitious — most lifters add 1–1.5 kg/week at best. Consider a longer block.`;
+  }
+  if (sport === 'running' && ex.goalVal != null && baseline > 0) {
+    const pct = (baseline - ex.goalVal) / baseline * 100;
+    if (pct > 12)
+      return `${Math.round(pct)}% faster over ${weeks} weeks is aggressive — most runners see 5–8% per block. Consider extending.`;
+  }
+  if (sport === 'cycle' && ex.unit === 'W' && ex.goalVal != null) {
+    const gain = ex.goalVal - baseline;
+    if (gain > 0 && gain / weeks > 4)
+      return `${(gain / weeks).toFixed(1)} W/week FTP gain is high — expect 2–3 W/week with consistent training.`;
+  }
+  if (sport === 'tri') {
+    const isFull = state.exercise.toLowerCase().includes('full');
+    const floor = isFull ? 16 : 12;
+    if (weeks < floor)
+      return `${isFull ? 'Full Ironman' : '70.3'} prep typically needs ${floor}+ weeks — consider extending your block.`;
+  }
+  if (sport === 'hyrox' && ex.goalVal != null && baseline > 0) {
+    const pct = (baseline - ex.goalVal) / baseline * 100;
+    if (pct > 20)
+      return `${Math.round(pct)}% improvement over ${weeks} weeks is ambitious — aim for 10–15% per block.`;
+  }
+  return null;
+}
+
+function checkWarning() {
+  const el = document.getElementById('warning-banner');
+  const msg = getWarning();
+  el.textContent = msg || '';
+  el.classList.toggle('visible', !!msg);
+}
+
+// ── Generate ───────────────────────────────────────────────────────────────
+function generate() {
+  if (openId) closePicker(openId, true);
+  const btn = document.getElementById('gen-btn');
+  btn.disabled = true;
+  btn.textContent = 'Building your plan…';
+}
+
+function resetAll() { location.reload(); }
+
+// ── Init ───────────────────────────────────────────────────────────────────
+buildExerciseChips();
+const _initCfg = SPORT_CONFIG[state.sport];
+document.getElementById('weeks-minus').disabled = state.weeks <= _initCfg.weeksMin;
+document.getElementById('vol-minus').disabled   = state.volume <= _initCfg.volMin;
+document.getElementById('date-input').value = state.date;
+wrapWords(document.getElementById('chunk-sport'), 220);
+</script>
+</body>
+</html>
