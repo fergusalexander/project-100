@@ -351,6 +351,65 @@ body {
   .card { padding:22px 18px 20px; border-radius:16px; }
   .sentence-line { font-size:18px; }
 }
+
+/* ── Plan section ─────────────────────────────────────────────────────── */
+#plan-section { display: none; margin-top: 20px; }
+#plan-section.visible { display: block; }
+.plan-error {
+  font-size: 13px; color: var(--red);
+  padding: 10px 12px;
+  background: rgba(255,59,48,0.07);
+  border-radius: 10px; margin-bottom: 12px;
+}
+#plan-weeks { display: flex; flex-direction: column; gap: 10px; }
+.week-card {
+  border-radius: 14px;
+  border: 0.5px solid var(--sep);
+  overflow: hidden;
+  animation: word-in 0.3s ease both;
+}
+.week-header {
+  display: flex; align-items: center; gap: 10px;
+  padding: 11px 14px 10px;
+  background: var(--fill1);
+  border-bottom: 0.5px solid var(--sep);
+}
+.week-badge {
+  font-size: 10px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--blue); background: rgba(0,122,255,0.1);
+  padding: 2px 8px; border-radius: 99px; flex-shrink: 0;
+}
+.week-phase { font-size: 13px; font-weight: 600; color: var(--label); }
+.session-row {
+  display: flex; gap: 0;
+  padding: 9px 14px;
+  border-bottom: 0.5px solid var(--sep);
+}
+.session-row:last-of-type { border-bottom: none; }
+.session-day {
+  font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--text3); width: 36px; flex-shrink: 0; padding-top: 2px;
+}
+.session-body { font-size: 13px; line-height: 1.5; color: var(--label); flex: 1; }
+.session-label { font-weight: 600; }
+.session-desc { color: var(--text2); margin-top: 1px; font-size: 12px; }
+.coaching-note {
+  padding: 9px 14px;
+  font-size: 12px; font-style: italic; color: var(--text2);
+  background: var(--fill1);
+  border-top: 0.5px solid var(--sep);
+}
+.save-row { margin-top: 14px; }
+.btn-save {
+  width: 100%; padding: 13px 20px; border: none; border-radius: 999px;
+  background: var(--green); color: #fff;
+  font-size: 15px; font-weight: 600; font-family: inherit;
+  letter-spacing: -0.01em; cursor: pointer;
+  transition: opacity .15s, transform .15s;
+}
+.btn-save:hover { opacity: 0.9; transform: translateY(-1px); }
 </style>
 </head>
 <body>
@@ -476,6 +535,14 @@ body {
         <button class="btn-primary" id="gen-btn" onclick="generate()">Build my plan →</button>
         <button class="btn-icon" onclick="resetAll()" title="Start over">↺</button>
       </div>
+    </div>
+  </div>
+
+  <!-- ── Plan output ──────────────────────────────────────────────────── -->
+  <div id="plan-section">
+    <div id="plan-weeks"></div>
+    <div class="save-row" id="save-row" style="display:none">
+      <button class="btn-save" onclick="save()">Save plan</button>
     </div>
   </div>
 
@@ -987,12 +1054,314 @@ function checkWarning() {
   el.classList.toggle('visible', !!msg);
 }
 
+// ── API config ─────────────────────────────────────────────────────────────
+const API_URL = 'https://api.anthropic.com/v1/messages';
+const MODEL   = 'claude-opus-5';
+
+function getApiKey() {
+  let key = localStorage.getItem('chatpt_api_key');
+  if (!key) {
+    key = window.prompt('Enter your Anthropic API key:');
+    if (key?.trim()) localStorage.setItem('chatpt_api_key', key.trim());
+  }
+  return key?.trim() || null;
+}
+
+// ── System prompts — one per sport ─────────────────────────────────────────
+const SYSTEM_PROMPTS = {
+  strength: `You are an elite strength coach specialising in powerlifting periodisation. Build progressive strength blocks with logical phase structure: Accumulation → Intensification → Peaking, with a Deload every 4th week (40% volume reduction, same intensity).
+
+Output ONLY a raw JSON array — no markdown fences, no explanation, no preamble, no trailing text. Each element is one week:
+{"week":<n>,"phase":"<name>","sessions":[{"day":"<Mon/Tue/Wed/Thu/Fri/Sat/Sun>","label":"<name>","description":"<specific details>"}],"coaching_note":"<week insight>"}
+
+Rules:
+- Session descriptions must include: load as % 1RM, set×rep scheme, rest periods, one coaching cue. Example: "4×5 @ 78% 1RM. 3 min rest. Cue: full leg drive, bar stays over mid-foot."
+- Accessories: specify reps, sets, and tempo where relevant.
+- coaching_note must be specific to that week's emphasis — not generic advice.
+- Day abbreviations: Mon, Tue, Wed, Thu, Fri, Sat, Sun only.`,
+
+  running: `You are an elite distance running coach. Build periodised plans through: Aerobic Base → Threshold Development → Race-Specific Sharpening → Taper.
+
+Output ONLY a raw JSON array — no markdown fences, no explanation, no preamble, no trailing text. Each element is one week:
+{"week":<n>,"phase":"<name>","sessions":[{"day":"<Mon–Sun>","label":"<name>","description":"<specific workout>"}],"coaching_note":"<week insight>"}
+
+Rules:
+- Session descriptions must specify distance or time, pace zone (e.g. "easy Z2 ~6:00/km", "threshold Z4 ~4:30/km", "5k race pace ~4:10/km"), and interval structure where applicable. Example: "8×800m @ 5k pace (4:10/km), 90s jog recovery. Total ~10km."
+- Include exactly one rest or active recovery day per week.
+- Long runs should build progressively (add ~10% per week max, back off on deload weeks).
+- coaching_note: one specific focus for the week — form cue, nutrition reminder, sleep emphasis, etc.`,
+
+  swim: `You are an elite swim coach specialising in open-water and pool-to-OW progression. Periodise with: Stroke Efficiency → Aerobic Volume → Race-Pace Sharpening → Taper.
+
+Output ONLY a raw JSON array — no markdown fences, no explanation, no preamble, no trailing text. Each element is one week:
+{"week":<n>,"phase":"<name>","sessions":[{"day":"<Mon–Sun>","label":"<name>","description":"<specific workout>"}],"coaching_note":"<week insight>"}
+
+Rules:
+- Session descriptions must include total distance, main set with rep structure and target effort/pace, rest intervals. Example: "WU: 400m easy. Main: 10×100m @ race pace, 20s rest. CD: 200m. Total: 2.2km."
+- Specify stroke technique focus where relevant (bilateral breathing, catch mechanics, etc.).
+- Include an open-water simulation session in later weeks if the event is OW.
+- Rest periods should decrease as fitness builds across the block.`,
+
+  cycle: `You are an elite cycling coach who builds FTP and endurance through structured interval work and base miles. Periodise: Base Endurance → Sweet-Spot → VO2max Development → Race Sharpening.
+
+Output ONLY a raw JSON array — no markdown fences, no explanation, no preamble, no trailing text. Each element is one week:
+{"week":<n>,"phase":"<name>","sessions":[{"day":"<Mon–Sun>","label":"<name>","description":"<specific workout>"}],"coaching_note":"<week insight>"}
+
+Rules:
+- Session descriptions must specify: total ride duration or distance, power zone (Z2 endurance, sweet-spot 88–93% FTP, threshold 95–105% FTP, VO2max 106–120% FTP), interval structure. Example: "3×12 min @ 90% FTP, 5 min recovery. Total ride: 75 min."
+- Include one rest day and one long endurance ride per week.
+- Long ride duration should build across the block.
+- Deload week: reduce interval volume by 40%, keep intensity.`,
+
+  tri: `You are an elite triathlon coach building multi-sport periodised plans that balance swim/bike/run load and peak for race day. Phases: Aerobic Foundation → Build → Race-Specific → Taper.
+
+Output ONLY a raw JSON array — no markdown fences, no explanation, no preamble, no trailing text. Each element is one week:
+{"week":<n>,"phase":"<name>","sessions":[{"day":"<Mon–Sun>","label":"<name>","description":"<specific workout>"}],"coaching_note":"<week insight>"}
+
+Rules:
+- Always specify discipline at the start of each description: "Swim:", "Bike:", "Run:", or "Brick (bike→run):".
+- Include brick sessions (bike immediately followed by run) in the Build phase onwards.
+- Never schedule two high-intensity sessions back-to-back on consecutive days.
+- Long ride and long run should be on separate days with a rest or swim day between.
+- Session descriptions must include duration/distance, intensity zone, and key intervals.`,
+
+  hyrox: `You are an elite functional fitness coach specialising in Hyrox race preparation. Build race-specific fitness through: General Conditioning → Hyrox Station Skill → Race-Pace Simulation → Peaking.
+
+Output ONLY a raw JSON array — no markdown fences, no explanation, no preamble, no trailing text. Each element is one week:
+{"week":<n>,"phase":"<name>","sessions":[{"day":"<Mon–Sun>","label":"<name>","description":"<specific workout>"}],"coaching_note":"<week insight>"}
+
+Rules:
+- Reference Hyrox stations by name: SkiErg, Sled Push, Sled Pull, Burpee Broad Jumps, Rowing, Farmers Carry, Sandbag Lunges, Wall Balls.
+- Include 1km run intervals to build the race's running splits.
+- Session descriptions must include specific loads, distances, and reps. Example: "4 rounds: 500m run + 200m SkiErg + 25m Sled Push (140kg M / 102kg F). 90s rest between rounds."
+- Include strength accessory work to support functional stations (hip hinges, carries, pressing).
+- Later weeks should include full mock-race simulations with all 8 stations.`,
+
+  custom: `You are an elite performance coach. Build a periodised training plan tailored precisely to the stated goal, applying logical phase structure and progressive overload.
+
+Output ONLY a raw JSON array — no markdown fences, no explanation, no preamble, no trailing text. Each element is one week:
+{"week":<n>,"phase":"<name>","sessions":[{"day":"<Mon–Sun>","label":"<name>","description":"<specific workout>"}],"coaching_note":"<week insight>"}
+
+Rules:
+- Session descriptions must be specific: exercise names, sets, reps, loads, durations, distances. No vague language.
+- Apply a deload or recovery week every 4th week.
+- coaching_note: one key insight or focus specific to that week — not generic.`,
+};
+
+// ── Prompt builder ─────────────────────────────────────────────────────────
+function buildPrompt() {
+  const baselineStr = fmtBaseline(state.baseline, state.baseUnit);
+  const volumeStr = state.volType === 'hours'
+    ? `${state.volume} hours/week`
+    : `${state.volume} days/week`;
+  const raceStr = state.race ? `, targeting ${state.race}` : '';
+  const dateStr = state.date
+    ? ` on ${new Date(state.date + 'T12:00:00').toLocaleDateString('en-GB', {day:'numeric',month:'long',year:'numeric'})}`
+    : '';
+  const baselineNote = state.baselineSkipped
+    ? 'Current level: unknown (beginner / no baseline)'
+    : `Current level: ${baselineStr}`;
+
+  return `Build me a ${state.weeks}-week ${state.sport} training plan.
+Goal: ${state.exercise}${raceStr}${dateStr}
+${baselineNote}
+Training volume: ${volumeStr}
+
+Return ONLY a JSON array of exactly ${state.weeks} week objects — no preamble, no markdown fences, no trailing commentary. Start your response with [ and end with ].`;
+}
+
+// ── JSON cleaning ──────────────────────────────────────────────────────────
+function cleanJson(text) {
+  text = text.replace(/^```(?:json)?\s*/im, '').replace(/\s*```\s*$/m, '');
+  const start = text.search(/[\[{]/);
+  if (start > 0) text = text.slice(start);
+  const end = Math.max(text.lastIndexOf(']'), text.lastIndexOf('}'));
+  if (end >= 0 && end < text.length - 1) text = text.slice(0, end + 1);
+  return text.trim();
+}
+
+// ── Progressive week extraction — bracket-counting with string tracking ────
+function extractCompleteWeeks(text) {
+  const weeks = [];
+  let i = 0;
+  const n = text.length;
+  while (i < n) {
+    while (i < n && text[i] !== '{') i++;
+    if (i >= n) break;
+    const start = i;
+    let depth = 0;
+    let inStr = false;
+    let escape = false;
+    while (i < n) {
+      const ch = text[i];
+      if (escape)          { escape = false; i++; continue; }
+      if (ch === '\\' && inStr) { escape = true; i++; continue; }
+      if (ch === '"')      { inStr = !inStr; i++; continue; }
+      if (!inStr) {
+        if      (ch === '{') depth++;
+        else if (ch === '}') {
+          depth--;
+          if (depth === 0) {
+            try {
+              const obj = JSON.parse(text.slice(start, i + 1));
+              if (typeof obj.week === 'number') weeks.push(obj);
+            } catch (_) {}
+            i++;
+            break;
+          }
+        }
+      }
+      i++;
+    }
+  }
+  return weeks;
+}
+
+// ── Week card renderer ─────────────────────────────────────────────────────
+function renderWeek(data) {
+  const card = document.createElement('div');
+  card.className = 'week-card';
+
+  const sessions = (data.sessions || []).map(s => `
+    <div class="session-row">
+      <div class="session-day">${s.day || ''}</div>
+      <div class="session-body">
+        <div class="session-label">${s.label || ''}</div>
+        ${s.description ? `<div class="session-desc">${s.description}</div>` : ''}
+      </div>
+    </div>`).join('');
+
+  const note = data.coaching_note
+    ? `<div class="coaching-note">${data.coaching_note}</div>` : '';
+
+  card.innerHTML = `
+    <div class="week-header">
+      <span class="week-badge">Week ${data.week}</span>
+      <span class="week-phase">${data.phase || ''}</span>
+    </div>
+    ${sessions}${note}`;
+
+  document.getElementById('plan-weeks').appendChild(card);
+  card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function showPlanError(msg) {
+  document.getElementById('plan-section').querySelector('.plan-error')?.remove();
+  const el = document.createElement('div');
+  el.className = 'plan-error';
+  el.textContent = msg;
+  const weeksEl = document.getElementById('plan-weeks');
+  document.getElementById('plan-section').insertBefore(el, weeksEl);
+}
+
+// ── Save stub ──────────────────────────────────────────────────────────────
+function save() {
+  console.log('[ChatPT] Plan JSON:', JSON.stringify(window._planData || [], null, 2));
+  // TODO: persist to Supabase
+}
+
 // ── Generate ───────────────────────────────────────────────────────────────
-function generate() {
+async function generate() {
   if (openId) closePicker(openId, true);
-  const btn = document.getElementById('gen-btn');
+
+  const apiKey = getApiKey();
+  if (!apiKey) return;
+
+  const btn       = document.getElementById('gen-btn');
+  const planSec   = document.getElementById('plan-section');
+  const planWeeks = document.getElementById('plan-weeks');
+  const saveRow   = document.getElementById('save-row');
+
   btn.disabled = true;
   btn.textContent = 'Building your plan…';
+  planSec.classList.add('visible');
+  planWeeks.innerHTML = '';
+  saveRow.style.display = 'none';
+  planSec.querySelector('.plan-error')?.remove();
+
+  let fullText     = '';
+  let renderedCnt  = 0;
+  const planData   = [];
+
+  try {
+    const resp = await fetch(API_URL, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+      body: JSON.stringify({
+        model: MODEL,
+        max_tokens: 8000,
+        stream: true,
+        system: SYSTEM_PROMPTS[state.sport] || SYSTEM_PROMPTS.custom,
+        messages: [{ role: 'user', content: buildPrompt() }],
+      }),
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      throw new Error(err?.error?.message || `API error ${resp.status}`);
+    }
+
+    const reader  = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let lineBuffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      lineBuffer += decoder.decode(value, { stream: true });
+      const lines = lineBuffer.split('\n');
+      lineBuffer = lines.pop();
+
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const data = line.slice(6).trim();
+        if (data === '[DONE]') break;
+        try {
+          const evt = JSON.parse(data);
+          if (evt.type === 'content_block_delta' && evt.delta?.type === 'text_delta') {
+            fullText += evt.delta.text;
+            const allWeeks = extractCompleteWeeks(cleanJson(fullText));
+            while (renderedCnt < allWeeks.length) {
+              renderWeek(allWeeks[renderedCnt]);
+              planData.push(allWeeks[renderedCnt]);
+              renderedCnt++;
+              btn.textContent = `Building… (week ${renderedCnt} of ${state.weeks})`;
+            }
+          }
+        } catch (_) {}
+      }
+    }
+
+    // Final sweep — catch any weeks not yet rendered
+    const finalWeeks = extractCompleteWeeks(cleanJson(fullText));
+    while (renderedCnt < finalWeeks.length) {
+      renderWeek(finalWeeks[renderedCnt]);
+      planData.push(finalWeeks[renderedCnt]);
+      renderedCnt++;
+    }
+
+    window._planData = planData;
+
+    if (renderedCnt === 0) {
+      btn.disabled = false;
+      btn.textContent = 'Build my plan →';
+      showPlanError('No plan returned — check your API key and try again.');
+    } else {
+      btn.textContent = 'Plan built ✓';
+      saveRow.style.display = '';
+    }
+
+  } catch (err) {
+    console.error('[generate]', err);
+    btn.disabled = false;
+    btn.textContent = 'Build my plan →';
+    showPlanError(err.message || 'Something went wrong — check your API key and try again.');
+  }
 }
 
 function resetAll() { location.reload(); }
