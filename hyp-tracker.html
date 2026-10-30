@@ -118,7 +118,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sa
 .abtn.done-btn:hover { background: var(--moss-light); color: var(--moss); border-color: transparent; }
 .abtn.skip-btn:hover { background: #fce8e8; color: #922; border-color: transparent; }
 
-/* Log panel — appears when tapping Done */
+/* Log panel */
 .log-panel { margin-top: 10px; background: var(--bg2); border-radius: var(--radius); padding: 10px 12px; display: none; }
 .log-panel.open { display: block; }
 .log-panel-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .07em; color: var(--text3); margin-bottom: 8px; }
@@ -134,7 +134,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sa
 .log-skip-link { font-size: 12px; color: var(--text3); padding: 5px 8px; cursor: pointer; border-radius: 6px; border: none; background: transparent; font-family: inherit; }
 .log-skip-link:hover { color: var(--text2); background: var(--bg3); }
 
-/* Actual weights logged on done sessions */
+/* Actual weights */
 .sactual { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px; }
 .sactual-chip { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 4px; display: flex; align-items: center; gap: 4px; }
 .sac-bench { background: var(--iron-light); color: var(--iron); }
@@ -146,6 +146,89 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sa
 .week-summary { background: var(--card); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 13px 16px; box-shadow: var(--shadow); margin-bottom: 12px; }
 .week-focus { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
 .week-note { font-size: 12px; color: var(--text2); line-height: 1.5; }
+
+/* ── Weekly Review ── */
+.review-card {
+  background: var(--card); border: 1.5px solid var(--iron);
+  border-radius: var(--radius-lg); overflow: hidden;
+  box-shadow: 0 2px 12px rgba(44,62,80,0.1); margin-bottom: 8px;
+}
+.review-header {
+  background: var(--iron); color: #fff;
+  padding: 13px 16px; display: flex; align-items: center;
+  justify-content: space-between; flex-wrap: wrap; gap: 8px;
+}
+.review-header-left { display: flex; align-items: center; gap: 10px; }
+.review-icon { font-size: 18px; }
+.review-title { font-size: 14px; font-weight: 700; letter-spacing: -.01em; }
+.review-subtitle { font-size: 11px; opacity: .7; margin-top: 1px; }
+.review-badge { font-size: 10px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; padding: 3px 9px; border-radius: 999px; background: rgba(255,255,255,0.18); color: #fff; }
+.review-body { padding: 16px; }
+.review-generating { display: flex; align-items: center; gap: 10px; padding: 18px 16px; color: var(--text2); font-size: 13px; }
+.review-spinner { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--border2); border-top-color: var(--iron); animation: spin .7s linear infinite; flex-shrink: 0; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.review-content { font-size: 13px; line-height: 1.7; color: var(--text); }
+.review-content h3 { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--iron); margin: 14px 0 6px; padding-bottom: 4px; border-bottom: 0.5px solid var(--border2); }
+.review-content h3:first-child { margin-top: 0; }
+.review-content p { margin-bottom: 8px; }
+.review-content p:last-child { margin-bottom: 0; }
+.review-content ul { padding-left: 18px; margin-bottom: 8px; }
+.review-content ul li { margin-bottom: 4px; }
+.review-content strong { color: var(--iron); font-weight: 600; }
+.review-trigger-btn { display: flex; align-items: center; gap: 8px; width: 100%; padding: 14px 16px; background: transparent; border: none; color: var(--text2); font-size: 13px; font-family: inherit; cursor: pointer; text-align: left; border-top: 0.5px solid var(--border); transition: background .15s; }
+.review-trigger-btn:hover { background: var(--bg2); }
+.review-trigger-btn .ricon { font-size: 15px; }
+.review-error { color: var(--orange); font-size: 12px; padding: 10px 0; }
+.review-meta { font-size: 11px; color: var(--text3); margin-top: 10px; padding-top: 10px; border-top: 0.5px solid var(--border); }
+.bench-btn { font-size: 11px; padding: 3px 8px; border-radius: 6px; border: 0.5px solid var(--border2); background: transparent; color: var(--text2); cursor: pointer; }
+.bench-btn:hover { background: var(--bg2); }
+
+/* ── Chat ── */
+.chat-fab { position: fixed; bottom: 24px; right: 20px; z-index: 200; width: 52px; height: 52px; border-radius: 50%; background: var(--iron); color: #fff; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 20px; box-shadow: 0 4px 16px rgba(0,0,0,0.22); transition: transform .15s, box-shadow .15s; }
+.chat-fab:hover { transform: scale(1.07); box-shadow: 0 6px 22px rgba(0,0,0,0.28); }
+.chat-unread { position: absolute; top: -2px; right: -2px; width: 16px; height: 16px; border-radius: 50%; background: var(--orange); font-size: 9px; font-weight: 700; display: none; align-items: center; justify-content: center; border: 2px solid var(--bg); }
+.chat-panel { position: fixed; bottom: 84px; right: 20px; z-index: 199; width: 360px; max-width: calc(100vw - 32px); height: 520px; max-height: calc(100vh - 110px); background: var(--card); border: 0.5px solid var(--border2); border-radius: var(--radius-lg); box-shadow: 0 8px 40px rgba(0,0,0,0.18); display: flex; flex-direction: column; overflow: hidden; transform: scale(0.92) translateY(12px); opacity: 0; pointer-events: none; transition: transform .2s ease, opacity .2s ease; transform-origin: bottom right; }
+.chat-panel.open { transform: scale(1) translateY(0); opacity: 1; pointer-events: all; }
+.chat-topbar { background: var(--iron); color: #fff; padding: 12px 14px; display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.chat-avatar { width: 30px; height: 30px; border-radius: 50%; background: rgba(255,255,255,0.18); display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+.chat-topbar-info { flex: 1; min-width: 0; }
+.chat-topbar-name { font-size: 13px; font-weight: 700; }
+.chat-topbar-sub { font-size: 10px; opacity: .65; margin-top: 1px; }
+.chat-close-btn { background: none; border: none; color: rgba(255,255,255,0.7); font-size: 18px; cursor: pointer; padding: 2px 4px; line-height: 1; border-radius: 4px; transition: background .15s; }
+.chat-close-btn:hover { background: rgba(255,255,255,0.15); color: #fff; }
+.chat-messages { flex: 1; overflow-y: auto; padding: 14px 12px; display: flex; flex-direction: column; gap: 10px; scroll-behavior: smooth; }
+.chat-messages::-webkit-scrollbar { width: 4px; }
+.chat-messages::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+.cmsg { display: flex; gap: 8px; align-items: flex-end; }
+.cmsg.user { flex-direction: row-reverse; }
+.cmsg-avatar { width: 24px; height: 24px; border-radius: 50%; flex-shrink: 0; background: var(--iron-light); display: flex; align-items: center; justify-content: center; font-size: 11px; color: var(--iron); font-weight: 700; margin-bottom: 2px; }
+.cmsg.user .cmsg-avatar { background: var(--moss-light); color: var(--moss); }
+.cmsg-bubble { max-width: 82%; padding: 9px 12px; border-radius: 14px; font-size: 13px; line-height: 1.55; color: var(--text); background: var(--bg2); border: 0.5px solid var(--border); border-bottom-left-radius: 4px; }
+.cmsg.user .cmsg-bubble { background: var(--iron); color: #fff; border: none; border-bottom-right-radius: 4px; border-bottom-left-radius: 14px; }
+.cmsg-bubble strong { font-weight: 600; }
+.cmsg-bubble ul { padding-left: 16px; margin: 4px 0; }
+.cmsg-bubble li { margin-bottom: 2px; }
+.cmsg-bubble p { margin: 0 0 5px; }
+.cmsg-bubble p:last-child { margin-bottom: 0; }
+.chat-typing { display: flex; gap: 4px; align-items: center; padding: 10px 12px; }
+.chat-typing span { width: 6px; height: 6px; border-radius: 50%; background: var(--text3); animation: typingdot 1.2s infinite; }
+.chat-typing span:nth-child(2) { animation-delay: .2s; }
+.chat-typing span:nth-child(3) { animation-delay: .4s; }
+@keyframes typingdot { 0%,60%,100%{transform:translateY(0);opacity:.4} 30%{transform:translateY(-4px);opacity:1} }
+.chat-suggestions { padding: 0 12px 10px; display: flex; gap: 6px; flex-wrap: wrap; flex-shrink: 0; }
+.chat-suggestion { font-size: 11px; padding: 5px 10px; border-radius: 999px; border: 0.5px solid var(--border2); background: transparent; color: var(--text2); cursor: pointer; font-family: inherit; transition: all .15s; white-space: nowrap; }
+.chat-suggestion:hover { background: var(--iron); color: #fff; border-color: transparent; }
+.chat-input-row { padding: 10px 12px; border-top: 0.5px solid var(--border); display: flex; gap: 8px; align-items: flex-end; flex-shrink: 0; }
+.chat-input { flex: 1; font-size: 13px; font-family: inherit; line-height: 1.45; padding: 8px 11px; border-radius: 20px; border: 0.5px solid var(--border2); background: var(--bg2); color: var(--text); resize: none; outline: none; max-height: 100px; overflow-y: auto; transition: border-color .15s; }
+.chat-input:focus { border-color: var(--iron); }
+.chat-input::placeholder { color: var(--text3); }
+.chat-send-btn { width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0; background: var(--iron); color: #fff; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px; transition: background .15s; align-self: flex-end; }
+.chat-send-btn:hover { background: var(--slate); }
+.chat-send-btn:disabled { opacity: .4; cursor: default; }
+.chat-empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 20px; text-align: center; }
+.chat-empty-icon { font-size: 32px; opacity: .5; }
+.chat-empty-title { font-size: 14px; font-weight: 600; color: var(--text); }
+.chat-empty-sub { font-size: 12px; color: var(--text3); line-height: 1.5; }
 
 /* Loading */
 .loading-overlay { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 100; }
@@ -195,6 +278,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sa
   <div class="section-title">Lift baselines</div>
   <div class="lift-grid" id="lift-grid"></div>
 
+  <div id="review-section"></div>
+
   <div class="section-title">Sessions</div>
   <div class="week-nav" id="week-nav"></div>
   <div class="week-summary" id="week-summary"></div>
@@ -202,16 +287,44 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sa
 
 </div>
 
+<!-- Chat FAB -->
+<button class="chat-fab" id="chat-fab" onclick="toggleChat()" title="Ask your PT">
+  💬
+  <div class="chat-unread" id="chat-unread"></div>
+</button>
+
+<!-- Chat Panel -->
+<div class="chat-panel" id="chat-panel">
+  <div class="chat-topbar">
+    <div class="chat-avatar">💪</div>
+    <div class="chat-topbar-info">
+      <div class="chat-topbar-name">Your PT</div>
+      <div class="chat-topbar-sub" id="chat-status-line">Ask anything about your training</div>
+    </div>
+    <button class="chat-close-btn" onclick="toggleChat()">×</button>
+  </div>
+  <div class="chat-messages" id="chat-messages">
+    <div class="chat-empty" id="chat-empty">
+      <div class="chat-empty-icon">💬</div>
+      <div class="chat-empty-title">Ask your PT anything</div>
+      <div class="chat-empty-sub">Sets, reps, weight selection, muscle soreness, substitutions — anything about the block.</div>
+    </div>
+  </div>
+  <div id="chat-suggestions" class="chat-suggestions"></div>
+  <div class="chat-input-row">
+    <textarea class="chat-input" id="chat-input" rows="1" placeholder="Ask something…" onkeydown="chatKeydown(event)" oninput="autoResize(this)"></textarea>
+    <button class="chat-send-btn" id="chat-send-btn" onclick="sendChat()">↑</button>
+  </div>
+</div>
+
 <script>
 const SUPA_URL = "https://kobiepbwuhhglduorxme.supabase.co";
 const SUPA_KEY = "sb_publishable_HKtKQKzm_FD2wqx3wvVUQg_5PErOqPX";
+const WORKER_URL = "https://spring-bush-4404.fergusjralexander.workers.dev/";
 const { createClient } = supabase;
 const db = createClient(SUPA_URL, SUPA_KEY);
 
 // ── Programme ─────────────────────────────────────────────────────────────────
-// Each session has a `lifts` array: {name, planned (kg), type}
-// type drives the chip colour: bench | squat | dead | other
-
 const WEEKS = [
   {
     num:1, label:"Wk 1", dates:"6–10 Oct", phase:"Establish",
@@ -326,15 +439,12 @@ const WEEKS = [
 const TAG = {lower:"t-lower", upper:"t-upper", full:"t-full", rest:"t-rest"};
 
 // ── State ─────────────────────────────────────────────────────────────────────
-let sessionStatus = {};   // key → "done" | "skip" | "pending"
-let sessionData   = {};   // key → {liftName: actualKg, ...}
-let lifts = {
-  bench_start:"100", bench_end:"",
-  squat_start:"80",  squat_end:"",
-  dead_start:"110",  dead_end:"",
-};
+let sessionStatus = {};
+let sessionData   = {};
+let lifts = { bench_start:"100", bench_end:"", squat_start:"80", squat_end:"", dead_start:"110", dead_end:"" };
 let currentWeek = 1;
-let logOpen = null; // key of currently open log panel
+let logOpen = null;
+let reviewCache = {};
 
 // ── Status bar ────────────────────────────────────────────────────────────────
 function setStatus(state, msg, right="") {
@@ -462,7 +572,7 @@ function renderWeekNav() {
     return `<button class="wtab${w.num===currentWeek?" active":""}" onclick="setWeek(${w.num})">${w.label}${done?`<span class="dot"></span>`:""}</button>`;
   }).join("");
 }
-window.setWeek = function(n) { currentWeek=n; logOpen=null; renderWeekNav(); renderWeekSummary(); renderSessions(); };
+window.setWeek = function(n) { currentWeek=n; logOpen=null; renderWeekNav(); renderWeekSummary(); renderSessions(); maybeShowReview(); };
 
 function renderWeekSummary() {
   const w = WEEKS.find(x=>x.num===currentWeek);
@@ -481,7 +591,6 @@ function deltaChip(planned, actual) {
   return `<span class="delta delta-lower">${d}kg</span>`;
 }
 
-// ── Actual weights chips (shown on done sessions) ─────────────────────────────
 function actualChipsHtml(key, liftDefs) {
   const data = sessionData[key];
   if (!data || !Object.keys(data).length) return "";
@@ -492,7 +601,6 @@ function actualChipsHtml(key, liftDefs) {
   }).join("")}</div>`;
 }
 
-// ── Log panel HTML ────────────────────────────────────────────────────────────
 function logPanelHtml(key, liftDefs) {
   const rows = liftDefs.map(l =>
     `<div class="log-lift-row">
@@ -512,7 +620,6 @@ function logPanelHtml(key, liftDefs) {
   </div>`;
 }
 
-// ── Sessions ──────────────────────────────────────────────────────────────────
 function renderSessions() {
   const w = WEEKS.find(x=>x.num===currentWeek);
   document.getElementById("session-list").innerHTML = w.sessions.map((s,i) => {
@@ -544,11 +651,8 @@ function renderSessions() {
   }).join("");
 }
 
-// ── Log interactions ──────────────────────────────────────────────────────────
 window.openLog = function(key) {
-  if (logOpen && logOpen !== key) {
-    document.getElementById("logpanel_"+logOpen)?.classList.remove("open");
-  }
+  if (logOpen && logOpen !== key) document.getElementById("logpanel_"+logOpen)?.classList.remove("open");
   logOpen = key;
   document.getElementById("logpanel_"+key)?.classList.add("open");
 };
@@ -557,12 +661,9 @@ window.saveLog = async function(key) {
   const w = WEEKS.find(w => w.sessions.some((_,i) => `w${w.num}_d${i}` === key));
   const si = w?.sessions.findIndex((_,i) => `w${w.num}_d${i}` === key);
   const liftDefs = w?.sessions[si]?.lifts || [];
-
-  // Collect entered values
   const saves = [];
   liftDefs.forEach(l => {
-    const inputId = `log_${key}_${l.name.replace(/\s/g,'_')}`;
-    const el = document.getElementById(inputId);
+    const el = document.getElementById(`log_${key}_${l.name.replace(/\s/g,'_')}`);
     const val = parseFloat(el?.value);
     if (!isNaN(val) && val > 0) {
       if (!sessionData[key]) sessionData[key] = {};
@@ -570,18 +671,13 @@ window.saveLog = async function(key) {
       saves.push(upsertSessionData(key, l.name, val));
     }
   });
-
-  sessionStatus[key] = "done";
-  logOpen = null;
+  sessionStatus[key] = "done"; logOpen = null;
   renderAll();
   await Promise.all([upsertSession(key, "done"), ...saves]);
 };
 
 window.skipLog = async function(key) {
-  sessionStatus[key] = "done";
-  logOpen = null;
-  renderAll();
-  await upsertSession(key, "done");
+  sessionStatus[key] = "done"; logOpen = null; renderAll(); await upsertSession(key, "done");
 };
 
 window.markSession = async function(key, status) {
@@ -591,6 +687,348 @@ window.markSession = async function(key, status) {
 window.undoSession = async function(key) {
   sessionStatus[key] = "pending"; logOpen = null; renderAll(); await upsertSession(key, "pending");
 };
+
+// ── Weekly Review ─────────────────────────────────────────────────────────────
+function isWeekComplete(weekNum) {
+  const w = WEEKS.find(x => x.num === weekNum);
+  if (!w) return false;
+  return w.sessions.every((s, i) => {
+    const st = sessionStatus[`w${weekNum}_d${i}`];
+    return st === "done" || st === "skip";
+  });
+}
+
+function isFridayAfterFour() {
+  const now = new Date();
+  return now.getDay() === 5 && now.getHours() >= 16;
+}
+
+function buildReviewPrompt(weekNum) {
+  const w = WEEKS.find(x => x.num === weekNum);
+  const nextW = WEEKS.find(x => x.num === weekNum + 1);
+  const doneCount = w.sessions.filter((s,i) => sessionStatus[`w${w.num}_d${i}`] === "done").length;
+  const skipCount = w.sessions.filter((s,i) => sessionStatus[`w${w.num}_d${i}`] === "skip").length;
+
+  const sessionSummaries = w.sessions.map((s,i) => {
+    const key = `w${w.num}_d${i}`;
+    const st = sessionStatus[key] || "pending";
+    const data = sessionData[key];
+    const actualStr = data && Object.keys(data).length
+      ? "\n    Actual: " + Object.entries(data).map(([k,v]) => `${k} ${v}kg`).join(", ")
+      : "";
+    return `  - ${s.day} (${s.name}): ${st.toUpperCase()}${s.detail ? "\n    Prescribed: " + s.detail.replace(/\n/g," | ") : ""}${actualStr}`;
+  }).join("\n");
+
+  const nextSessionSummaries = nextW
+    ? nextW.sessions.map(s => `  - ${s.day}: ${s.name} — ${s.desc}`).join("\n")
+    : "Final week of the block — no more weeks after this.";
+
+  return `You are a personal trainer reviewing a 6-week full body hypertrophy block. Speak directly to the athlete in second person, like a real PT giving a Friday debrief — warm, direct, no fluff.
+
+ATHLETE CONTEXT:
+- Just completed a 100kg bench press peaking block (hit 100kg 3 times)
+- Now in a 6-week full body hypertrophy block: Mon Lower / Thu Upper / Fri Full Body
+- Block runs Oct–Nov 2026 · Week ${weekNum} of 6 · Phase: ${w.phase}
+- Bench 1RM: 100kg · Squat estimate: ~115kg · Deadlift 1RM: ~160kg
+- Has a knee that needs managing — prefers single-leg over bilateral squats where possible
+
+WEEK ${weekNum} SESSIONS (${w.dates}):
+${sessionSummaries}
+
+Done: ${doneCount}, Skipped: ${skipCount} of ${w.sessions.length} sessions.
+
+NEXT WEEK (Week ${weekNum + 1 <= 6 ? weekNum + 1 : "N/A"} — ${nextW ? nextW.phase : "block complete"}):
+${nextSessionSummaries}
+
+Write a weekly review with exactly these markdown headings:
+
+### Week ${weekNum} Summary
+What they did, how it fits the block, any notable lifts vs plan.
+
+### What to watch
+1–3 specific things: form cues, fatigue markers, recovery signals based on this week's actual work.
+
+### Next week adjustments
+Concrete coaching notes for next week — what to push, protect, or tweak. Reference actual weights logged. If they skipped, address it.
+
+### Mindset note
+One short paragraph on where they are in the block mentally and physically.
+
+~250 words max. Be specific, not generic.`;
+}
+
+function mdToHtml(md) {
+  return md
+    .replace(/### (.+)/g, '<h3>$1</h3>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/^- (.+)$/gm, '<li>$1</li>')
+    .replace(/(<li>[\s\S]*?<\/li>\n?)+/g, m => `<ul>${m}</ul>`)
+    .split('\n\n').map(p => {
+      p = p.trim();
+      if (!p) return '';
+      if (p.startsWith('<h3>') || p.startsWith('<ul>')) return p;
+      return `<p>${p}</p>`;
+    }).join('\n');
+}
+
+async function generateReview(weekNum, force=false) {
+  if (reviewCache[weekNum] && !force) return;
+  const section = document.getElementById("review-section");
+  const w = WEEKS.find(x => x.num === weekNum);
+  section.innerHTML = `
+    <div class="section-title">Friday Review — Week ${weekNum}</div>
+    <div class="review-card">
+      <div class="review-header">
+        <div class="review-header-left"><span class="review-icon">📋</span><div><div class="review-title">PT Weekly Review</div><div class="review-subtitle">Week ${weekNum} · ${w.phase} · ${w.dates}</div></div></div>
+        <span class="review-badge">Generating…</span>
+      </div>
+      <div class="review-generating"><div class="review-spinner"></div>Analysing your week…</div>
+    </div>`;
+  try {
+    const res = await fetch(WORKER_URL, {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({model:"claude-sonnet-4-6", max_tokens:1000, messages:[{role:"user",content:buildReviewPrompt(weekNum)}]})
+    });
+    const data = await res.json();
+    const text = data.content?.find(b=>b.type==="text")?.text || "";
+    if (!text) throw new Error("No response");
+    reviewCache[weekNum] = text;
+    renderReview(weekNum);
+  } catch(err) {
+    section.innerHTML = `
+      <div class="section-title">Friday Review — Week ${weekNum}</div>
+      <div class="review-card">
+        <div class="review-header"><div class="review-header-left"><span class="review-icon">📋</span><div><div class="review-title">PT Weekly Review</div></div></div><span class="review-badge">Error</span></div>
+        <div class="review-body"><div class="review-error">Couldn't generate: ${err.message} <button class="bench-btn" onclick="generateReview(${weekNum},true)">Retry</button></div></div>
+      </div>`;
+  }
+}
+
+function renderReview(weekNum) {
+  const w = WEEKS.find(x => x.num === weekNum);
+  const text = reviewCache[weekNum];
+  const timeStr = new Date().toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});
+  const doneCount = w.sessions.filter((s,i) => sessionStatus[`w${weekNum}_d${i}`]==="done").length;
+  document.getElementById("review-section").innerHTML = `
+    <div class="section-title">Friday Review — Week ${weekNum}</div>
+    <div class="review-card">
+      <div class="review-header">
+        <div class="review-header-left"><span class="review-icon">📋</span><div><div class="review-title">PT Weekly Review</div><div class="review-subtitle">Week ${weekNum} · ${w.phase} · ${w.dates}</div></div></div>
+        <span class="review-badge">Week ${weekNum} of 6</span>
+      </div>
+      <div class="review-body">
+        <div class="review-content">${mdToHtml(text)}</div>
+        <div class="review-meta">Generated ${timeStr} · ${doneCount} sessions completed · <button class="bench-btn" onclick="generateReview(${weekNum},true)">Regenerate</button></div>
+      </div>
+    </div>`;
+}
+
+function maybeShowReview() {
+  const section = document.getElementById("review-section");
+  const complete = isWeekComplete(currentWeek);
+  const fridayPM = isFridayAfterFour();
+
+  if (complete && (fridayPM || reviewCache[currentWeek])) {
+    if (reviewCache[currentWeek]) renderReview(currentWeek);
+    else generateReview(currentWeek);
+    return;
+  }
+  if (complete && !fridayPM) {
+    const now = new Date();
+    const daysToFri = ((5 - now.getDay() + 7) % 7) || (now.getHours() < 16 ? 0 : 7);
+    const isToday = daysToFri === 0;
+    section.innerHTML = `
+      <div class="section-title">Friday Review — Week ${currentWeek}</div>
+      <div class="review-card" style="border-style:dashed;opacity:.75">
+        <button class="review-trigger-btn" onclick="generateReview(${currentWeek})">
+          <span class="ricon">📋</span>
+          <div><div style="font-weight:600;color:var(--text);font-size:13px">Week ${currentWeek} complete — PT review ready</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px">${isToday?"Unlocks at 4pm today":"Unlocks Friday at 4pm"} · or tap to generate now</div></div>
+        </button>
+      </div>`;
+    return;
+  }
+  if (complete) { section.innerHTML = ""; return; }
+  const w = WEEKS.find(x => x.num === currentWeek);
+  const remaining = w.sessions.filter((s,i) => !sessionStatus[`w${currentWeek}_d${i}`] || sessionStatus[`w${currentWeek}_d${i}`] === "pending").length;
+  if (remaining > 0) {
+    section.innerHTML = `
+      <div class="section-title">Friday Review — Week ${currentWeek}</div>
+      <div class="review-card" style="border-color:var(--border);opacity:.6">
+        <div class="review-generating" style="color:var(--text3)">
+          <span style="font-size:18px">🔒</span>
+          <div><div style="font-size:13px;font-weight:500">Review unlocks when week ${currentWeek} is complete</div>
+          <div style="font-size:11px;margin-top:2px">${remaining} session${remaining!==1?"s":""} still to mark done</div></div>
+        </div>
+      </div>`;
+  } else { section.innerHTML = ""; }
+}
+
+// ── Chat ──────────────────────────────────────────────────────────────────────
+let chatOpen = false, chatHistory = [], chatWaiting = false;
+
+const CHAT_SUGGESTIONS = [
+  "Should I go heavier if the planned weight feels easy?",
+  "My lower back is a bit tight — should I modify?",
+  "What's the point of dropping to 8 reps in week 5?",
+  "Can I swap Friday to Saturday this week?",
+  "How do I know if I'm building muscle vs just getting stronger?",
+  "What should I eat on training days?",
+  "My squat form breaks down at the bottom — what helps?",
+  "Should I be sore after every session?",
+  "Can I add an extra session this week?",
+  "How does this block set me up for the next peaking cycle?",
+];
+
+function buildChatSystemPrompt() {
+  const w = WEEKS.find(x => x.num === currentWeek);
+  const daysLeft = Math.max(0, Math.ceil((new Date("2026-11-14") - new Date()) / 86400000));
+
+  const sessionCtx = w.sessions.map((s,i) => {
+    const key = `w${w.num}_d${i}`;
+    const st = sessionStatus[key] || "pending";
+    const data = sessionData[key];
+    const actualStr = data && Object.keys(data).length
+      ? " | Logged: " + Object.entries(data).map(([k,v]) => `${k} ${v}kg`).join(", ")
+      : "";
+    return `${s.day} — ${s.name}: ${st}${actualStr}`;
+  }).join("\n");
+
+  const allCtx = WEEKS.map(wk => {
+    return `Week ${wk.num} (${wk.phase}): ` + wk.sessions.map((s,i) => {
+      const st = sessionStatus[`w${wk.num}_d${i}`] || "pending";
+      const data = sessionData[`w${wk.num}_d${i}`];
+      const actualStr = data && Object.keys(data).length
+        ? " [" + Object.entries(data).map(([k,v]) => `${k} ${v}kg`).join(", ") + "]"
+        : "";
+      return `${s.day} ${s.name} (${st})${actualStr}`;
+    }).join(", ");
+  }).join("\n");
+
+  return `You are a personal trainer for an athlete on a 6-week full body hypertrophy block. Be direct, practical, and warm — like a good PT who knows their athlete well. Keep replies concise (2-4 short paragraphs unless detail is genuinely needed).
+
+ATHLETE PROFILE:
+- Just hit 100kg bench press (3 times — it's solid, not a lucky single)
+- Full body hypertrophy block: Mon Lower / Thu Upper / Fri Full Body
+- Block: 6 weeks, Oct–Nov 2026 · ${daysLeft} days remaining
+- Bench 1RM: 100kg · Squat estimate: ~115kg · Deadlift: ~160kg
+- Knee needs managing — single-leg work preferred over bilateral squats
+
+CURRENT WEEK (Week ${currentWeek} — ${w.phase}, ${w.dates}):
+${sessionCtx}
+
+FULL BLOCK LOG:
+${allCtx}
+
+BLOCK STRUCTURE:
+- Weeks 1–2: Establish (3 sets, find working weights)
+- Weeks 3–4: Build (4 sets, load increases)
+- Weeks 5–6: Intensify (8 reps, heavier, supersets)
+
+Answer based on this context. Be a real coach, not a disclaimer machine.`;
+}
+
+function toggleChat() {
+  chatOpen = !chatOpen;
+  document.getElementById("chat-panel").classList.toggle("open", chatOpen);
+  if (chatOpen) {
+    clearUnread();
+    renderChatSuggestions();
+    setTimeout(() => document.getElementById("chat-input").focus(), 220);
+  }
+}
+function clearUnread() {
+  const b = document.getElementById("chat-unread");
+  b.style.display = "none"; b.textContent = "";
+}
+function showUnread() {
+  if (chatOpen) return;
+  const b = document.getElementById("chat-unread");
+  b.style.display = "flex"; b.textContent = "1";
+}
+function renderChatSuggestions() {
+  const el = document.getElementById("chat-suggestions");
+  if (chatHistory.length > 0) { el.innerHTML = ""; return; }
+  const picks = [...CHAT_SUGGESTIONS].sort(() => Math.random() - 0.5).slice(0, 3);
+  el.innerHTML = picks.map(s => `<button class="chat-suggestion" onclick="useSuggestion(this)">${s}</button>`).join("");
+}
+window.useSuggestion = function(btn) {
+  document.getElementById("chat-input").value = btn.textContent; sendChat();
+};
+function autoResize(el) {
+  el.style.height = "auto";
+  el.style.height = Math.min(el.scrollHeight, 100) + "px";
+}
+function chatKeydown(e) {
+  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendChat(); }
+}
+function appendMessage(role, html) {
+  const messages = document.getElementById("chat-messages");
+  document.getElementById("chat-empty")?.remove();
+  const isUser = role === "user";
+  const div = document.createElement("div");
+  div.className = `cmsg${isUser?" user":""}`;
+  div.innerHTML = `<div class="cmsg-avatar">${isUser?"You":"PT"}</div><div class="cmsg-bubble">${html}</div>`;
+  messages.appendChild(div);
+  messages.scrollTop = messages.scrollHeight;
+}
+function showTyping() {
+  const messages = document.getElementById("chat-messages");
+  const div = document.createElement("div");
+  div.className = "cmsg"; div.id = "chat-typing-indicator";
+  div.innerHTML = `<div class="cmsg-avatar">PT</div><div class="cmsg-bubble chat-typing"><span></span><span></span><span></span></div>`;
+  messages.appendChild(div);
+  messages.scrollTop = messages.scrollHeight;
+}
+function hideTyping() { document.getElementById("chat-typing-indicator")?.remove(); }
+function chatMd(text) {
+  return text
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/^- (.+)$/gm, '<li>$1</li>')
+    .replace(/(<li>[\s\S]*?<\/li>\n?)+/g, m => `<ul>${m}</ul>`)
+    .split('\n\n').map(p => {
+      p = p.trim();
+      if (!p || p.startsWith('<ul>')) return p;
+      return `<p>${p}</p>`;
+    }).join('\n');
+}
+async function sendChat() {
+  if (chatWaiting) return;
+  const input = document.getElementById("chat-input");
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = ""; input.style.height = "auto";
+  document.getElementById("chat-suggestions").innerHTML = "";
+  document.getElementById("chat-send-btn").disabled = true;
+  chatWaiting = true;
+  appendMessage("user", text.replace(/</g,"&lt;").replace(/>/g,"&gt;"));
+  chatHistory.push({role:"user", content:text});
+  document.getElementById("chat-status-line").textContent = "Thinking…";
+  showTyping();
+  try {
+    const res = await fetch(WORKER_URL, {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({model:"claude-sonnet-4-6", max_tokens:1000, system:buildChatSystemPrompt(), messages:chatHistory})
+    });
+    const data = await res.json();
+    const reply = data.content?.find(b=>b.type==="text")?.text || "Sorry, something went wrong.";
+    chatHistory.push({role:"assistant", content:reply});
+    hideTyping();
+    appendMessage("assistant", chatMd(reply));
+    document.getElementById("chat-status-line").textContent = "Ask anything about your training";
+    if (!chatOpen) showUnread();
+  } catch(err) {
+    hideTyping();
+    appendMessage("assistant", `<span style="color:var(--orange)">Connection error — try again.</span>`);
+    document.getElementById("chat-status-line").textContent = "Ask anything about your training";
+    chatHistory.pop();
+  }
+  chatWaiting = false;
+  document.getElementById("chat-send-btn").disabled = false;
+  document.getElementById("chat-input").focus();
+}
 
 // ── Auto week ─────────────────────────────────────────────────────────────────
 function autoWeek() {
@@ -603,7 +1041,7 @@ function autoWeek() {
 }
 
 function renderAll() {
-  renderStats(); renderLiftGrid(); renderWeekNav(); renderWeekSummary(); renderSessions();
+  renderStats(); renderLiftGrid(); renderWeekNav(); renderWeekSummary(); renderSessions(); maybeShowReview();
 }
 
 (async()=>{
